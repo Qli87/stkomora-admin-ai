@@ -41,8 +41,7 @@ export default class Sidebar extends React.Component {
                     </div>
                 </form> */}
                     <ul className="sidebar-menu" data-widget="tree">
-                        <li className={`treeview ${this.state.activeMenuItem === 'pocetna' ? 'active' : ''}`}>
-                            {/* <a href="#1" onClick={() => this.activateMenuItem('pocetna')}> */}
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'pocetna' ? 'active' : ''}`}>
                             <NavLink to="#1"  onClick={() => this.activateMenuItem('pocetna')}>
                                 <i className="fa fa-dashboard"></i> <span>Početna</span>
                                 <span className="pull-right-container">
@@ -52,8 +51,8 @@ export default class Sidebar extends React.Component {
                             <ul className="treeview-menu">
                                 <li className="active"><NavLink to="/pocetna"><i className="fa fa-circle-o"></i> Podaci o stranici</NavLink></li>
                             </ul>
-                        </li>
-                        <li className={`treeview ${this.state.activeMenuItem === 'onama' ? 'active' : ''}`}>
+                        </li> */}
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'onama' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('onama')}>
                                 <i className="fa fa-user-circle"></i> <span>O nama</span>
                                 <span className="pull-right-container">
@@ -63,7 +62,7 @@ export default class Sidebar extends React.Component {
                             <ul className="treeview-menu">
                                 <li><NavLink to='/onama'><i className="fa fa-circle-o"></i> Podaci o stranici</NavLink></li>
                             </ul>
-                        </li>
+                        </li> */}
                         <li className={`treeview ${this.state.activeMenuItem === 'clanovi_komore' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('clanovi_komore')}>
                                 <i className="fa fa-user-o"></i> <span>Članovi komore</span>
@@ -77,7 +76,7 @@ export default class Sidebar extends React.Component {
                             </ul>
                         </li>
 
-                        <li className={`treeview ${this.state.activeMenuItem === 'clanovi_izvrsnog_odbora' ? 'active' : ''}`}>
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'clanovi_izvrsnog_odbora' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('clanovi_izvrsnog_odbora')}>
                                 <i className="fa fa-user"></i><span>Članovi izvršnog odbora</span>
                                     <span className="pull-right-container">
@@ -87,9 +86,9 @@ export default class Sidebar extends React.Component {
                             <ul className="treeview-menu">
                                 <li className="active"><NavLink to="/clanoviOdbora"><i className="fa fa-circle-o"></i> Spisak članova</NavLink></li>
                             </ul>
-                        </li>
+                        </li> */}
 
-                        <li className={`treeview ${this.state.activeMenuItem === 'clanovi_skupstine' ? 'active' : ''}`}>
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'clanovi_skupstine' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('clanovi_skupstine')}>
                                 <i className="fa fa-user-circle"></i> <span>Članovi skupštine</span>
                                 <span className="pull-right-container">
@@ -103,7 +102,7 @@ export default class Sidebar extends React.Component {
                                 <li><NavLink to="/clanoviSkupstineSjever" ><i className="fa fa-circle-o"></i> Sjever</NavLink></li>
                                 <li><NavLink to="/clanoviSkupstineJug" ><i className="fa fa-circle-o"></i> Jug</NavLink></li>
                             </ul>
-                        </li>
+                        </li> */}
                         <li className={`treeview ${this.state.activeMenuItem === 'vijesti' ? 'active' : ''}`}>
                             {/* <a href="#1" onClick={() => this.activateMenuItem('vijesti')}> */}
                             <NavLink to="#1" onClick={() => this.activateMenuItem('vijesti')}>
@@ -118,6 +117,19 @@ export default class Sidebar extends React.Component {
                                 <li><NavLink to='/dodajVijest'><i className="fa fa-circle-o"></i> Dodaj vijest</NavLink></li>
                             </ul>
                         </li>
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'okomori' ? 'active' : ''}`}>
+                            <NavLink to="#1" onClick={() => this.activateMenuItem('okomori')}>
+                                <i className="fa fa-user-circle"></i> <span>O komori</span>
+                                <span className="pull-right-container">
+                                <i className="fa fa-angle-left pull-right"></i>
+                                </span>
+                            </NavLink>
+                            <ul className="treeview-menu">
+                                <li className="active"><NavLink to='/organi_komore'><i className="fa fa-circle-o"></i> Organi komore</NavLink></li>
+                                <li><NavLink to='/pristup_informacijama'><i className="fa fa-circle-o"></i> Slobodan pristup info.</NavLink></li>
+                                <li><NavLink to='/dodaj_o_komori'><i className="fa fa-circle-o"></i> Dodaj forma</NavLink></li>
+                            </ul>
+                        </li> */}
                         <li className={`treeview ${this.state.activeMenuItem === 'oglasi' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('oglasi')}>
                                 <i className="fa fa-user-circle"></i> <span>Oglasi</span>
@@ -130,7 +142,7 @@ export default class Sidebar extends React.Component {
                                 <li><NavLink to="/dodajOglas"><i className="fa fa-circle-o"></i> Dodaj oglas</NavLink></li>
                             </ul>
                         </li>
-                        <li className={`treeview ${this.state.activeMenuItem === 'kontakt' ? 'active' : ''}`}>
+                        {/* <li className={`treeview ${this.state.activeMenuItem === 'kontakt' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('kontakt')}>
                                 <i className="fa fa-user-circle"></i> <span>Kontakt</span>
                                 <span className="pull-right-container">
@@ -140,7 +152,7 @@ export default class Sidebar extends React.Component {
                             <ul className="treeview-menu">
                                 <li className="active"><NavLink to="/kontakt"><i className="fa fa-circle-o"></i> Podaci o firmi</NavLink></li>
                             </ul>
-                        </li>
+                        </li> */}
 
                         <li className={`treeview ${this.state.activeMenuItem === 'kongres' ? 'active' : ''}`}>
                             <NavLink to="#1" onClick={() => this.activateMenuItem('kongres')}>

@@ -194,3 +194,231 @@
      color: #ff0000;
      }
      #second{display:none;}
+
+/* ========== Responsive: login & app layout ========== */
+.login-page-wrap {
+  min-height: 100vh;
+  display: flex;
+  background: #fff;
+}
+.login-page-branding {
+  flex: 1;
+  min-width: 280px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+.login-page-form-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #fafafa;
+}
+.login-page-form-inner {
+  width: 100%;
+  max-width: 380px;
+}
+.app-layout-content {
+  margin: 24px 16px;
+  padding: 24px;
+  background: #fff;
+}
+
+@media (max-width: 768px) {
+  .login-page-wrap {
+    flex-direction: column;
+  }
+  .login-page-branding {
+    min-width: auto;
+    max-width: none;
+    padding: 24px 16px;
+    min-height: 200px;
+  }
+  .login-page-branding img {
+    width: 80px !important;
+  }
+  .login-page-branding h1 {
+    font-size: 18px !important;
+  }
+  .login-page-form-wrap {
+    padding: 20px 16px;
+    flex: 1;
+  }
+  .login-page-form-inner {
+    max-width: none;
+  }
+  .app-layout-content {
+    margin: 16px 8px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-page-branding {
+    padding: 20px 12px;
+  }
+  .app-layout-content {
+    margin: 12px 8px;
+    padding: 12px;
+  }
+}
+
+/* ========== Homepage (Početna stranica) responsive ========== */
+.home-page-editor {
+  max-width: 100%;
+}
+.home-page-editor-title {
+  margin-bottom: 24px !important;
+}
+.home-page-editor-save-btn {
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .home-page-editor-title {
+    font-size: 20px !important;
+    margin-bottom: 20px !important;
+  }
+  .home-page-editor-row.ant-row {
+    margin-left: -12px !important;
+    margin-right: -12px !important;
+  }
+  .home-page-editor-row .ant-col {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  .home-page-editor-save-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .home-page-editor-title {
+    font-size: 18px !important;
+    margin-bottom: 16px !important;
+  }
+  .home-page-editor-row.ant-row {
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+  }
+  .home-page-editor-row .ant-col {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .home-page-editor-textarea.ant-input {
+    min-height: 120px;
+  }
+}
+
+/* ========== Homepage v2 (sidebar + card editor) – responsive ========== */
+.home-page-editor-v2 {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.home-page-editor-v2-header {
+  margin-bottom: 20px;
+}
+.home-page-editor-v2 .ant-layout {
+  flex-direction: row;
+}
+.home-page-editor-v2 .ant-layout-sider {
+  flex: 0 0 240px !important;
+  max-width: 240px !important;
+  min-width: 240px !important;
+}
+.home-page-editor-v2 .ant-layout-content {
+  flex: 1;
+  min-width: 0;
+}
+.home-page-editor-v2-save-btn {
+  min-width: 140px;
+}
+
+/* Tablet and below */
+@media (max-width: 992px) {
+  .home-page-editor-v2 .ant-layout-sider {
+    flex: 0 0 200px !important;
+    max-width: 200px !important;
+    min-width: 200px !important;
+  }
+  .home-page-editor-v2-content {
+    padding: 0 16px !important;
+  }
+  .home-page-editor-v2-card .ant-card-body {
+    padding: 20px !important;
+  }
+  .home-page-editor-v2-layout {
+    min-height: 380px !important;
+  }
+}
+
+/* Mobile: stack sidebar on top */
+@media (max-width: 768px) {
+  .home-page-editor-v2-header .ant-typography {
+    font-size: 18px !important;
+  }
+  .home-page-editor-v2 .ant-layout {
+    flex-direction: column;
+    min-height: 320px !important;
+  }
+  .home-page-editor-v2 .ant-layout-sider {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    flex: none !important;
+    margin-bottom: 16px;
+  }
+  .home-page-editor-v2-sider .ant-menu {
+    padding: 4px 0 !important;
+  }
+  .home-page-editor-v2-sider .ant-menu-item {
+    padding: 10px 16px !important;
+  }
+  .home-page-editor-v2-content {
+    padding: 0 !important;
+  }
+  .home-page-editor-v2-card .ant-card-body {
+    padding: 16px !important;
+  }
+  .home-page-editor-v2-textarea.ant-input {
+    min-height: 180px;
+    font-size: 16px; /* reduces zoom on iOS */
+  }
+  .home-page-editor-v2-actions .ant-form-item-control-input-content {
+    display: flex;
+    justify-content: stretch;
+  }
+  .home-page-editor-v2-save-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 576px) {
+  .home-page-editor-v2-header .ant-typography {
+    font-size: 18px !important;
+  }
+  .home-page-editor-v2 .ant-layout {
+    min-height: 280px !important;
+  }
+  .home-page-editor-v2-sider .ant-menu-item {
+    padding: 8px 12px !important;
+    font-size: 13px;
+  }
+  .home-page-editor-v2-card .ant-card-body {
+    padding: 12px !important;
+  }
+  .home-page-editor-v2 .ant-form-item-label > label {
+    font-size: 14px !important;
+  }
+  .home-page-editor-v2-textarea.ant-input {
+    min-height: 140px;
+  }
+}
