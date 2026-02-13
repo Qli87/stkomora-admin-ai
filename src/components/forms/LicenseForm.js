@@ -30,7 +30,11 @@ export default function LicenseForm({
 
   return (
     <Form form={form} layout="vertical" onFinish={onFinish} autoComplete="off">
-      <Form.Item name="member_id" label="Stomatolog (član)" rules={[{ required: true, message: 'Izaberite stomatologa' }]}>
+      <Form.Item 
+        name="user_id" 
+        label="Stomatolog (član)" 
+        rules={[{ required: true, message: 'Izaberite stomatologa' }]}
+      >
         <Select
           options={memberOptions}
           placeholder="Izaberite stomatologa"

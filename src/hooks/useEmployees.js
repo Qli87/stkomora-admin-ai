@@ -57,3 +57,25 @@ export function useDeleteEmployee() {
     },
   });
 }
+
+export function useAddEmployeeContract(employeeId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file) => employeesApi.addContract(employeeId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: [...EMPLOYEES_QUERY_KEY, employeeId] });
+    },
+  });
+}
+
+export function useRemoveEmployeeContract(employeeId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (contractId) => employeesApi.removeContract(employeeId, contractId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: [...EMPLOYEES_QUERY_KEY, employeeId] });
+    },
+  });
+}

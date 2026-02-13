@@ -3,8 +3,9 @@
  * Server state: useMember(id), useUpdateMember, useCities (React Query).
  */
 import React, { useMemo, useEffect } from 'react';
-import { Form, Input, Select, Button, Card, message, Spin } from 'antd';
+import { Form, Input, Select, Button, Card, message, Spin, DatePicker } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useMember, useUpdateMember, useCities } from '../../hooks/useMembers';
 import { routes } from '../../core/constants/routes';
 
@@ -68,11 +69,15 @@ export default function MemberEditPage() {
       name: member.name,
       surname: member.surname,
       sex: sexOption,
-      dateOfBirth: member.date_of_birth ?? member.dateOfBirth,
+      dateOfBirth: (() => {
+        const raw = member.date_of_birth ?? member.dateOfBirth;
+        if (!raw) return null;
+        const d = dayjs(raw);
+        return d.isValid() ? d : null;
+      })(),
       speciality: member.speciality,
       company: member.company,
       city_id: member.city?.id ?? member.city_id,
-      expire: member.expire,
       faximil: member.fax_nbr ?? member.faximil,
       email: member.email,
       phone: member.phone,
@@ -82,17 +87,17 @@ export default function MemberEditPage() {
   const onFinish = async (values) => {
     if (!id) return;
     try {
+      const dob = values.dateOfBirth ? dayjs(values.dateOfBirth).format('YYYY-MM-DD') : null;
       await updateMember.mutateAsync({
         id: parseInt(id, 10),
         name: values.name,
         surname: values.surname,
         sex: typeof values.sex === 'object' ? values.sex?.label : values.sex,
-        dateOfBirth: values.dateOfBirth,
-        speciality: values.speciality,
-        company: values.company,
-        city_id: values.city_id,
-        expire: values.expire,
-        fax_nbr: values.faximil,
+        date_of_birth: dob,
+      speciality: values.speciality,
+      company: values.company,
+      city_id: values.city_id,
+      fax_nbr: values.faximil,
         email: values.email,
         phone: values.phone,
       });
@@ -130,7 +135,7 @@ export default function MemberEditPage() {
           <Select options={SEX_OPTIONS} placeholder="Izaberite rod" />
         </Form.Item>
         <Form.Item name="dateOfBirth" label="Datum rođenja" rules={[{ required: true }]}>
-          <Input placeholder="Npr: 11.11.2011" />
+          <DatePicker format="DD.MM.YYYY" placeholder="Izaberite datum" style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="speciality" label="Specijalnost" rules={[{ required: true }]}>
           <Input placeholder="Specijalnost" />
@@ -140,9 +145,6 @@ export default function MemberEditPage() {
         </Form.Item>
         <Form.Item name="city_id" label="Grad" rules={[{ required: true }]}>
           <Select options={cityOptions} placeholder="Izaberite grad" showSearch optionFilterProp="label" />
-        </Form.Item>
-        <Form.Item name="expire" label="Isticanja">
-          <Input placeholder="Isticanja" />
         </Form.Item>
         <Form.Item name="faximil" label="Br. faksimila">
           <Input placeholder="Broj faksimila" />

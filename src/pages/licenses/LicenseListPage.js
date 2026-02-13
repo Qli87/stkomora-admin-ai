@@ -3,7 +3,7 @@
  */
 import React, { useMemo, useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Table, Input, Button, Space, Modal, Typography, message, Drawer, Spin, Form } from 'antd';
+import { Table, Input, Button, Space, Modal, Typography, message, Drawer, Spin, Form, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import {
   useLicenses,
@@ -25,6 +25,7 @@ export default function LicenseListPage() {
   const addLicense = useAddLicense();
   const updateLicense = useUpdateLicense();
   const [searchText, setSearchText] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [deleteModal, setDeleteModal] = useState({ visible: false, item: null });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('add');
@@ -36,7 +37,7 @@ export default function LicenseListPage() {
   useEffect(() => {
     if (!editingItem || drawerMode !== 'edit') return;
     form.setFieldsValue({
-      member_id: editingItem.member_id ?? editingItem.member?.id,
+      user_id: editingItem.user_id ?? editingItem.user?.id ?? editingItem.member_id ?? editingItem.member?.id,
       type: editingItem.type,
       license_number: editingItem.license_number,
       expires_at: editingItem.expires_at ? dayjs(editingItem.expires_at) : null,
@@ -45,15 +46,23 @@ export default function LicenseListPage() {
   }, [editingItem, drawerMode, form]);
 
   const filteredLicenses = useMemo(() => {
-    if (!searchText.trim()) return licenses;
-    const lower = searchText.toLowerCase();
-    return licenses.filter(
-      (l) =>
-        (l.license_number && l.license_number.toLowerCase().includes(lower)) ||
-        (l.member?.name && l.member.name.toLowerCase().includes(lower)) ||
-        (l.member?.surname && l.member.surname.toLowerCase().includes(lower))
-    );
-  }, [licenses, searchText]);
+    let result = licenses;
+    if (typeFilter !== 'all') {
+      result = result.filter((l) => l.type === typeFilter);
+    }
+    if (searchText.trim()) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(
+        (l) =>
+          (l.license_number && l.license_number.toLowerCase().includes(lower)) ||
+          (l.user?.name && l.user.name.toLowerCase().includes(lower)) ||
+          (l.user?.surname && l.user.surname.toLowerCase().includes(lower)) ||
+          (l.member?.name && l.member.name.toLowerCase().includes(lower)) ||
+          (l.member?.surname && l.member.surname.toLowerCase().includes(lower))
+      );
+    }
+    return result;
+  }, [licenses, searchText, typeFilter]);
 
   const openAddDrawer = () => {
     setDrawerMode('add');
@@ -87,8 +96,15 @@ export default function LicenseListPage() {
 
   const onFormFinish = async (values) => {
     try {
+      // Use user_id if available, fallback to member_id for backward compatibility
+      const userId = values.user_id ?? values.member_id;
+      if (!userId) {
+        message.error('Stomatolog je obavezan');
+        return;
+      }
+
       const payload = {
-        member_id: values.member_id,
+        user_id: userId,
         type: values.type,
         license_number: values.license_number || null,
         expires_at: values.expires_at
@@ -113,11 +129,11 @@ export default function LicenseListPage() {
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60, fixed: 'left' },
     {
       title: 'Stomatolog',
-      key: 'member',
+      key: 'user',
       width: 150,
       ellipsis: true,
       render: (_, r) =>
-        r.member ? `${r.member.name || ''} ${r.member.surname || ''}`.trim() : '–',
+        r.user ? `${r.user.name || ''} ${r.user.surname || ''}`.trim() : '–',
     },
     {
       title: 'Tip',
@@ -186,6 +202,16 @@ export default function LicenseListPage() {
           Pregled licenci
         </Text>
         <Space wrap size="small">
+          <Select
+            value={typeFilter}
+            onChange={setTypeFilter}
+            style={{ width: 150 }}
+            options={[
+              { value: 'all', label: 'Sve licence' },
+              { value: 'permanent', label: 'Stalna' },
+              { value: 'temporary', label: 'Privremena' },
+            ]}
+          />
           <Search
             placeholder="Pretraga..."
             allowClear

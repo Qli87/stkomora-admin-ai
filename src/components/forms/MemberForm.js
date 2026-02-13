@@ -2,7 +2,7 @@
  * Member form fields â€“ used inside Drawer (add/edit).
  */
 import React, { useMemo, useState } from 'react';
-import { Form, Input, Select, Button, Space } from 'antd';
+import { Form, Input, Select, Button, Space, DatePicker } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useCities } from '../../hooks/useMembers';
 import { useCompanies } from '../../hooks/useCompanies';
@@ -76,7 +76,7 @@ export default function MemberForm({ form, onFinish, loading, submitLabel = 'SaÄ
         <Select options={SEX_OPTIONS} placeholder="Izaberite rod" />
       </Form.Item>
       <Form.Item name="dateOfBirth" label="Datum roÄ‘enja" rules={[{ required: true }]}>
-        <Input placeholder="Npr: 11.11.2011" />
+        <DatePicker format="DD.MM.YYYY" placeholder="Izaberite datum" style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item name="speciality" label="Specijalnost" rules={[{ required: true }]}>
         <Input placeholder="Specijalnost" />
@@ -94,11 +94,8 @@ export default function MemberForm({ form, onFinish, loading, submitLabel = 'SaÄ
       <Form.Item name="city_id" label="Grad" rules={[{ required: true }]}>
         <Select options={cityOptions} placeholder="Izaberite grad" showSearch optionFilterProp="label" />
       </Form.Item>
-      <Form.Item name="expired" label="Isticanja">
-        <Input placeholder="Isticanja" />
-      </Form.Item>
       <Form.Item name="faximil" label="Br. faksimila">
-        <Input placeholder="Broj faksimila" />
+        <Input placeholder="Broj faksimila" allowClear />
       </Form.Item>
       <Form.Item name="email" label="E-mail" rules={[{ required: true }, { type: 'email' }]}>
         <Input placeholder="E-mail" />

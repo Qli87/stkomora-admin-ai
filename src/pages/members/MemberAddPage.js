@@ -3,8 +3,9 @@
  * Server state: useAddMember, useCities (React Query).
  */
 import React, { useMemo } from 'react';
-import { Form, Input, Select, Button, Card, message } from 'antd';
+import { Form, Input, Select, Button, Card, message, DatePicker } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAddMember, useCities } from '../../hooks/useMembers';
 import { routes } from '../../core/constants/routes';
 
@@ -56,13 +57,13 @@ export default function MemberAddPage() {
 
   const onFinish = async (values) => {
     try {
+      const dob = values.dateOfBirth ? dayjs(values.dateOfBirth).format('YYYY-MM-DD') : null;
       await addMember.mutateAsync({
         name: values.name,
         surname: values.surname,
         sex: typeof values.sex === 'object' ? values.sex?.label : values.sex,
-        dateOfBirth: values.dateOfBirth,
+        date_of_birth: dob,
         speciality: values.speciality,
-        expired: values.expired,
         faximil: values.faximil,
         phone: values.phone,
         email: values.email,
@@ -95,7 +96,7 @@ export default function MemberAddPage() {
           <Select options={SEX_OPTIONS} placeholder="Izaberite rod" />
         </Form.Item>
         <Form.Item name="dateOfBirth" label="Datum rođenja" rules={[{ required: true }]}>
-          <Input placeholder="Npr: 11.11.2011" />
+          <DatePicker format="DD.MM.YYYY" placeholder="Izaberite datum" style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="speciality" label="Specijalnost" rules={[{ required: true }]}>
           <Input placeholder="Specijalnost" />
@@ -105,9 +106,6 @@ export default function MemberAddPage() {
         </Form.Item>
         <Form.Item name="city_id" label="Grad" rules={[{ required: true }]}>
           <Select options={cityOptions} placeholder="Izaberite grad" showSearch optionFilterProp="label" />
-        </Form.Item>
-        <Form.Item name="expired" label="Isticanja">
-          <Input placeholder="Isticanja" />
         </Form.Item>
         <Form.Item name="faximil" label="Br. faksimila">
           <Input placeholder="Broj faksimila" />

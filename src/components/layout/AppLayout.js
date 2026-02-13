@@ -16,6 +16,8 @@ import {
   MenuUnfoldOutlined,
   MenuOutlined,
   HomeOutlined,
+  BankOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,6 +39,7 @@ const sidebarItems = [
     children: [
       { key: routes.membersList, label: 'Spisak članova' },
       { key: routes.licensesList, label: 'Licence' },
+      { key: routes.companiesList, label: 'Ordinacije' },
     ],
   },
   {
@@ -46,7 +49,7 @@ const sidebarItems = [
     children: [{ key: routes.news, label: 'Pregled vijesti' }],
   },
   {
-    key: routes.advertisments,
+    key: 'advertisments',
     icon: <BellOutlined />,
     label: 'Oglasi',
     children: [{ key: routes.advertisments, label: 'Pregled oglasa' }],
@@ -60,6 +63,11 @@ const sidebarItems = [
     key: routes.consultantsList,
     icon: <TeamOutlined />,
     label: 'Saradnici',
+  },
+  {
+    key: routes.financesList,
+    icon: <DollarOutlined />,
+    label: 'Finansije',
   },
   {
     key: routes.congress,

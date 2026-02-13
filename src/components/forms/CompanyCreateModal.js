@@ -25,7 +25,7 @@ export default function CompanyCreateModal({ open, onClose, onCreated, memberId 
         phone: values.phone || null,
         status: values.status || null,
         city_id: values.city_id || null,
-        member_id: memberId || null,
+        user_id: memberId || null, // memberId parameter is actually a user ID now
       });
       form.resetFields();
       onCreated?.(company);

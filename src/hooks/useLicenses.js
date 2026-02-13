@@ -6,13 +6,20 @@ import { licensesApi } from '../core/api/licenses';
 
 const LICENSES_QUERY_KEY = ['licenses'];
 
-export function useLicenses(memberId = null) {
+export function useLicenses(memberId = null, userId = null) {
+  // Support both memberId (legacy) and userId (new)
+  const filterId = userId || memberId;
   return useQuery({
-    queryKey: memberId ? [...LICENSES_QUERY_KEY, memberId] : LICENSES_QUERY_KEY,
+    queryKey: filterId ? [...LICENSES_QUERY_KEY, filterId] : LICENSES_QUERY_KEY,
     queryFn: async () => {
-      const { data } = await licensesApi.getList(
-        memberId ? { member_id: memberId } : undefined
-      );
+      const params = {};
+      if (userId) {
+        params.user_id = userId;
+      } else if (memberId) {
+        // Backward compatibility
+        params.member_id = memberId;
+      }
+      const { data } = await licensesApi.getList(Object.keys(params).length > 0 ? params : undefined);
       return data;
     },
   });

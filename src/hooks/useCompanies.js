@@ -6,13 +6,20 @@ import { companiesApi } from '../core/api/companies';
 
 const COMPANIES_QUERY_KEY = ['companies'];
 
-export function useCompanies(memberId = null) {
+export function useCompanies(memberId = null, userId = null) {
+  // Support both memberId (legacy) and userId (new)
+  const filterId = userId || memberId;
   return useQuery({
-    queryKey: memberId ? [...COMPANIES_QUERY_KEY, memberId] : COMPANIES_QUERY_KEY,
+    queryKey: filterId ? [...COMPANIES_QUERY_KEY, filterId] : COMPANIES_QUERY_KEY,
     queryFn: async () => {
-      const { data } = await companiesApi.getList(
-        memberId ? { member_id: memberId } : undefined
-      );
+      const params = {};
+      if (userId) {
+        params.user_id = userId;
+      } else if (memberId) {
+        // Backward compatibility
+        params.member_id = memberId;
+      }
+      const { data } = await companiesApi.getList(Object.keys(params).length > 0 ? params : undefined);
       return data;
     },
   });

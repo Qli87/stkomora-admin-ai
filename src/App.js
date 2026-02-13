@@ -18,6 +18,8 @@ import AdvListPage from './pages/advertisments/AdvListPage';
 import CongressListPage from './pages/congress/CongressListPage';
 import LicenseListPage from './pages/licenses/LicenseListPage';
 import EmployeeListPage from './pages/employees/EmployeeListPage';
+import CompanyListPage from './pages/companies/CompanyListPage';
+import FinanceListPage from './pages/finances/FinanceListPage';
 import ConsultantListPage from './pages/consultants/ConsultantListPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -52,6 +54,8 @@ function App() {
                 <Route path="pocetna" element={<HomePage />} />
                 <Route path="spisakClanova" element={<MemberListPage />} />
                 <Route path="licence" element={<LicenseListPage />} />
+                <Route path="ordinacije" element={<CompanyListPage />} />
+                <Route path="finansije" element={<FinanceListPage />} />
                 <Route path="zaposleni" element={<EmployeeListPage />} />
                 <Route path="saradnici" element={<ConsultantListPage />} />
                 <Route path="kontakt" element={<PlaceholderPage title="Kontakt" />} />

@@ -10,6 +10,7 @@ import {
   useAddEmployee,
   useUpdateEmployee,
   useDeleteEmployee,
+  useAddEmployeeContract,
 } from '../../hooks/useEmployees';
 import EmployeeForm from '../../components/forms/EmployeeForm';
 import dayjs from 'dayjs';
@@ -29,7 +30,8 @@ export default function EmployeeListPage() {
   const [editingId, setEditingId] = useState(null);
   const [form] = Form.useForm();
 
-  const { data: editingItem, isLoading: loadingItem } = useEmployee(editingId);
+  const { data: editingItem, isLoading: loadingItem, refetch } = useEmployee(editingId);
+  const addContractMutation = useAddEmployeeContract(editingId);
 
   useEffect(() => {
     if (!editingItem || drawerMode !== 'edit') return;
@@ -74,6 +76,11 @@ export default function EmployeeListPage() {
     form.resetFields();
   };
 
+  const handleAddContract = async (file) => {
+    await addContractMutation.mutateAsync(file);
+    refetch();
+  };
+
   const handleDelete = async () => {
     if (!deleteModal.item?.id) return;
     try {
@@ -97,7 +104,7 @@ export default function EmployeeListPage() {
           ? values.date_of_birth.format('YYYY-MM-DD')
           : null,
         personal_id: values.personal_id,
-        contract: values.contract,
+        contracts: values.contracts,
       };
       if (drawerMode === 'add') {
         await addEmployee.mutateAsync(payload);
@@ -134,6 +141,12 @@ export default function EmployeeListPage() {
     },
     { title: 'Telefon', dataIndex: 'phone', key: 'phone', width: 115 },
     {
+      title: 'Ugovori',
+      key: 'contracts',
+      width: 80,
+      render: (_, record) => (record.contracts?.length ?? 0) || '—',
+    },
+    {
       title: 'Akcije',
       key: 'actions',
       width: 100,
@@ -168,7 +181,10 @@ export default function EmployeeListPage() {
         onCancel={closeDrawer}
         editingEmployeeId={drawerMode === 'edit' ? editingId : null}
         existingPersonalId={editingItem?.personal_id}
-        existingContract={editingItem?.contract}
+        existingContracts={editingItem?.contracts}
+        onContractAdded={handleAddContract}
+        onContractRemoved={() => refetch()}
+        addContractLoading={addContractMutation?.isPending}
       />
     );
 
