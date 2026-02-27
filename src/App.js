@@ -21,6 +21,7 @@ import EmployeeListPage from './pages/employees/EmployeeListPage';
 import CompanyListPage from './pages/companies/CompanyListPage';
 import FinanceListPage from './pages/finances/FinanceListPage';
 import ConsultantListPage from './pages/consultants/ConsultantListPage';
+import CertificateListPage from './pages/certificates/CertificateListPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { routes } from './core/constants/routes';
@@ -58,6 +59,7 @@ function App() {
                 <Route path="finansije" element={<FinanceListPage />} />
                 <Route path="zaposleni" element={<EmployeeListPage />} />
                 <Route path="saradnici" element={<ConsultantListPage />} />
+                <Route path="sertifikati" element={<CertificateListPage />} />
                 <Route path="kontakt" element={<PlaceholderPage title="Kontakt" />} />
                 <Route path="vijesti" element={<NewsListPage />} />
                 <Route path="vijestiKategorije/:id" element={<PlaceholderPage title="Vijesti po kategoriji" />} />

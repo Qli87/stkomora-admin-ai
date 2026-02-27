@@ -9,6 +9,7 @@ export const routes = {
   companiesList: '/ordinacije',
   employeesList: '/zaposleni',
   consultantsList: '/saradnici',
+  certificatesList: '/sertifikati',
   // addMember: '/dodajClana',
   // editMember: '/izmjeniClana',
   news: '/vijesti',

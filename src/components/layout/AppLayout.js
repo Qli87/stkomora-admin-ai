@@ -65,6 +65,11 @@ const sidebarItems = [
     label: 'Saradnici',
   },
   {
+    key: routes.certificatesList,
+    icon: <FileTextOutlined />,
+    label: 'Sertifikati',
+  },
+  {
     key: routes.financesList,
     icon: <DollarOutlined />,
     label: 'Finansije',
