@@ -6,8 +6,10 @@ import {
   Table, Input, Button, Space, Modal, Typography, message,
   Drawer, Spin, Form, Select, Tag,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, DownloadOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   useFinances,
   useFinance,
@@ -27,9 +29,94 @@ function fmtMoney(v) {
   return isNaN(n) ? '0.00' : n.toFixed(2);
 }
 
+/* UTF-8 PDF font (same origin to avoid 403) – postinstall copies to public/fonts */
+const PDF_FONT_URL = `${process.env.PUBLIC_URL || ''}/fonts/DejaVuSans.ttf`;
+let pdfFontBase64Cache = null;
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function getPdfFontBase64() {
+  if (pdfFontBase64Cache) return pdfFontBase64Cache;
+  const res = await fetch(PDF_FONT_URL);
+  if (!res.ok) throw new Error('Font load failed');
+  const buffer = await res.arrayBuffer();
+  pdfFontBase64Cache = arrayBufferToBase64(buffer);
+  return pdfFontBase64Cache;
+}
+
+function applyPdfFont(doc) {
+  if (!pdfFontBase64Cache) return;
+  doc.addFileToVFS('DejaVuSans.ttf', pdfFontBase64Cache);
+  doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+  doc.setFont('DejaVuSans', 'normal');
+}
+
 /* ───── Details Drawer Content ───── */
-function MemberDetailsContent({ memberId }) {
+function MemberDetailsContent({ memberId, memberName = '' }) {
   const { data, isLoading } = useMemberFinanceDetails(memberId);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!data) return;
+    setPdfLoading(true);
+    try {
+      await getPdfFontBase64();
+      const doc = new jsPDF();
+      applyPdfFont(doc);
+      const title = `Detalji – ${memberName || 'Član'}`;
+      doc.setFontSize(16);
+      doc.text(title, 14, 20);
+      const tableData = (data.records || []).map((r) => [
+        r.date ? dayjs(r.date).format('DD.MM.YYYY') : '–',
+        (r.description || '–').substring(0, 50),
+        fmtMoney(r.duguje),
+        fmtMoney(r.potrazuje),
+      ]);
+      autoTable(doc, {
+        head: [['Datum', 'Opis', 'Duguje', 'Potražuje']],
+        body: tableData,
+        startY: 28,
+        styles: { fontSize: 9, font: 'DejaVuSans' },
+        columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+      });
+      const finalY = doc.lastAutoTable?.finalY ?? 28;
+      doc.setFontSize(11);
+      doc.text(`Ukupno: ${fmtMoney(data.total)} €`, 14, finalY + 12);
+      doc.save(`finansije-${(memberName || 'clan').replace(/\s+/g, '-')}.pdf`);
+    } catch (e) {
+      message.error('Preuzimanje PDF-a nije uspjelo. Pokušajte ponovo.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!data) return;
+    const title = `Detalji – ${memberName || 'Član'}`;
+    const thead = '<tr><th>Datum</th><th>Opis</th><th>Duguje</th><th>Potražuje</th></tr>';
+    const tbody = (data.records || [])
+      .map(
+        (r) =>
+          `<tr><td>${r.date ? dayjs(r.date).format('DD.MM.YYYY') : '–'}</td><td>${(r.description || '–').replace(/</g, '&lt;')}</td><td style="text-align:right">${fmtMoney(r.duguje)}</td><td style="text-align:right">${fmtMoney(r.potrazuje)}</td></tr>`
+      )
+      .join('');
+    const total = fmtMoney(data.total);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#333} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#fafafa;font-weight:600} .total{margin-top:16px;padding:14px 20px;background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;text-align:right;font-weight:600;font-size:16px}</style>
+      </head><body><h2>${title}</h2><table><thead>${thead}</thead><tbody>${tbody}</tbody></table><div class="total">Ukupno: ${total} €</div></body></html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
+  };
 
   if (isLoading) {
     return (
@@ -83,6 +170,34 @@ function MemberDetailsContent({ memberId }) {
 
   return (
     <>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 12,
+          marginBottom: 16,
+          flexWrap: 'wrap',
+        }}
+      >
+        <Button
+          type="default"
+          icon={<DownloadOutlined />}
+          onClick={handleDownloadPdf}
+          loading={pdfLoading}
+          disabled={!data?.records?.length}
+          style={{ borderRadius: 8, minWidth: 120 }}
+        >
+          Preuzmi (PDF)
+        </Button>
+        <Button
+          type="primary"
+          icon={<PrinterOutlined />}
+          onClick={handlePrint}
+          style={{ borderRadius: 8, minWidth: 100 }}
+        >
+          Štampaj
+        </Button>
+      </div>
       <Table
         rowKey="id"
         columns={columns}
@@ -464,7 +579,12 @@ export default function FinanceListPage() {
         onClose={() => setDetailsMemberId(null)}
         destroyOnClose
       >
-        {detailsMemberId && <MemberDetailsContent memberId={detailsMemberId} />}
+        {detailsMemberId && (
+          <MemberDetailsContent
+            memberId={detailsMemberId}
+            memberName={detailsMemberName}
+          />
+        )}
       </Drawer>
     </div>
   );
