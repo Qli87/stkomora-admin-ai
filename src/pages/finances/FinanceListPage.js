@@ -63,7 +63,9 @@ const PDF_LOGO_LEFT_MM = 14;
 const PDF_LOGO_TOP_MM = 8;
 const PDF_HEADER_TO_SUBTITLE_GAP_MM = 14;
 const PDF_PAGE_WIDTH_MM = 210;
+const PDF_PAGE_HEIGHT_MM = 297;
 const PDF_RIGHT_MARGIN_MM = 14;
+const PDF_APPROVAL_LINE_WIDTH_MM = 35;
 const PDF_CHAMBER_TITLE = 'Stomatološka komora Crne Gore';
 
 async function getPdfLogoDataUrl() {
@@ -132,7 +134,12 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
       }
       doc.setFontSize(16);
       doc.text(subtitle, PDF_LOGO_LEFT_MM, subtitleY);
-      const tableStartY = subtitleY + 8;
+      const dateStr = dayjs().format('DD.MM.YYYY');
+      doc.setFontSize(10);
+      doc.setTextColor(90, 90, 90);
+      doc.text(dateStr, PDF_LOGO_LEFT_MM, subtitleY + 7);
+      doc.setTextColor(0, 0, 0);
+      const tableStartY = subtitleY + 14;
       const tableData = (data.records || []).map((r) => [
         r.date ? dayjs(r.date).format('DD.MM.YYYY') : '–',
         (r.description || '–').substring(0, 50),
@@ -154,6 +161,13 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
         finalY + 12,
         { align: 'right' }
       );
+      const approvalY = PDF_PAGE_HEIGHT_MM - 48;
+      const lineY = approvalY + 6;
+      const rightX = PDF_PAGE_WIDTH_MM - PDF_RIGHT_MARGIN_MM;
+      doc.setFontSize(10);
+      doc.text('Odobrio', rightX, approvalY, { align: 'right' });
+      doc.setLineWidth(0.3);
+      doc.line(rightX - PDF_APPROVAL_LINE_WIDTH_MM, lineY, rightX, lineY);
       doc.save(`finansije-${(memberName || 'clan').replace(/\s+/g, '-')}.pdf`);
     } catch (e) {
       message.error('Preuzimanje PDF-a nije uspjelo. Pokušajte ponovo.');
@@ -179,8 +193,16 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
     const chamberTitle = 'Stomatološka komora Crne Gore';
     printWindow.document.write(`
       <!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#333} .pdf-header{display:flex;align-items:center;gap:20px;margin-bottom:24px} .pdf-header .logo{width:80px;height:80px;object-fit:contain;flex-shrink:0} .pdf-header .chamber-title{font-size:1.1rem;font-weight:600;color:#262626;margin:0;line-height:1.3} .subtitle{font-size:1.25rem;margin:0 0 20px 0;font-weight:600;padding-top:18px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#fafafa;font-weight:600} .total{margin-top:16px;padding:14px 20px;background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;text-align:right;font-weight:600;font-size:16px}</style>
-      </head><body><div class="pdf-header"><img src="${logoUrl}" class="logo" alt="" onerror="this.style.display='none'"><p class="chamber-title">${chamberTitle}</p></div><h2 class="subtitle">${title}</h2><table><thead>${thead}</thead><tbody>${tbody}</tbody></table><div class="total">Ukupno: ${total} €</div></body></html>
+      <style>
+        @page{size:A4;margin:15mm}
+        body{font-family:system-ui,sans-serif;padding:16px;color:#333;margin:0}
+        .pdf-header{display:flex;align-items:center;gap:20px;margin-bottom:20px} .pdf-header .logo{width:80px;height:80px;object-fit:contain;flex-shrink:0} .pdf-header .chamber-title{font-size:1.1rem;font-weight:600;color:#262626;margin:0;line-height:1.3}
+        .subtitle{font-size:1.25rem;margin:0 0 6px 0;font-weight:600} .doc-date{font-size:0.95rem;color:#555;margin:0 0 14px 0;letter-spacing:0.02em}
+        table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:14px} th{background:#fafafa;font-weight:600}
+        .total{margin-top:12px;padding:12px 16px;background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;text-align:right;font-weight:600;font-size:15px}
+        .approval{margin-top:160px;text-align:right} .approval .label{font-size:0.95rem;margin-bottom:6px} .approval .line{border-bottom:1px solid #333;width:140px;margin-left:auto;margin-top:4px;height:1.2em}
+      </style>
+      </head><body><div class="pdf-header"><img src="${logoUrl}" class="logo" alt="" onerror="this.style.display='none'"><p class="chamber-title">${chamberTitle}</p></div><h2 class="subtitle">${title}</h2><p class="doc-date">${dayjs().format('DD.MM.YYYY')}</p><table><thead>${thead}</thead><tbody>${tbody}</tbody></table><div class="total">Ukupno: ${total} €</div><div class="approval"><div class="label">Odobrio</div><div class="line">&nbsp;</div></div></body></html>
     `);
     printWindow.document.close();
     printWindow.focus();
