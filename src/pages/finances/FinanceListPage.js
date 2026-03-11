@@ -56,6 +56,36 @@ function applyPdfFont(doc) {
   doc.setFont('DejaVuSans', 'normal');
 }
 
+const PDF_LOGO_URL = `${process.env.PUBLIC_URL || ''}/logo.png`;
+const PDF_LOGO_URL_JPG = `${process.env.PUBLIC_URL || ''}/logo.jpg`;
+const PDF_LOGO_SIZE_MM = 20;
+const PDF_LOGO_LEFT_MM = 14;
+const PDF_LOGO_TOP_MM = 8;
+const PDF_HEADER_TO_SUBTITLE_GAP_MM = 14;
+const PDF_PAGE_WIDTH_MM = 210;
+const PDF_RIGHT_MARGIN_MM = 14;
+const PDF_CHAMBER_TITLE = 'Stomatološka komora Crne Gore';
+
+async function getPdfLogoDataUrl() {
+  for (const url of [PDF_LOGO_URL, PDF_LOGO_URL_JPG]) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const mime = blob.type || (url.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 /* ───── Details Drawer Content ───── */
 function MemberDetailsContent({ memberId, memberName = '' }) {
   const { data, isLoading } = useMemberFinanceDetails(memberId);
@@ -65,12 +95,44 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
     if (!data) return;
     setPdfLoading(true);
     try {
-      await getPdfFontBase64();
+      let fontOk = false;
+      try {
+        await getPdfFontBase64();
+        fontOk = true;
+      } catch (fontErr) {
+        console.warn('PDF font not loaded, using default font:', fontErr);
+      }
+      let logoDataUrl = null;
+      try {
+        logoDataUrl = await getPdfLogoDataUrl();
+      } catch {
+        logoDataUrl = null;
+      }
       const doc = new jsPDF();
-      applyPdfFont(doc);
-      const title = `Detalji – ${memberName || 'Član'}`;
+      if (fontOk) applyPdfFont(doc);
+      const subtitle = `Finansijska kartica – ${memberName || 'Član'}`;
+      let subtitleY = 20;
+      const chamberTitleX = PDF_LOGO_LEFT_MM + PDF_LOGO_SIZE_MM + 5;
+      const chamberTitleY = PDF_LOGO_TOP_MM + PDF_LOGO_SIZE_MM / 2 + 2;
+      if (logoDataUrl) {
+        try {
+          const format = logoDataUrl.indexOf('image/png') !== -1 ? 'PNG' : 'JPEG';
+          doc.addImage(logoDataUrl, format, PDF_LOGO_LEFT_MM, PDF_LOGO_TOP_MM, PDF_LOGO_SIZE_MM, PDF_LOGO_SIZE_MM);
+          doc.setFontSize(14);
+          if (fontOk) doc.setFont('DejaVuSans', 'normal');
+          doc.text(PDF_CHAMBER_TITLE, chamberTitleX, chamberTitleY);
+          subtitleY = PDF_LOGO_TOP_MM + PDF_LOGO_SIZE_MM + PDF_HEADER_TO_SUBTITLE_GAP_MM;
+        } catch {
+          doc.setFontSize(12);
+          doc.text(PDF_CHAMBER_TITLE, PDF_LOGO_LEFT_MM, 12);
+        }
+      } else {
+        doc.setFontSize(12);
+        doc.text(PDF_CHAMBER_TITLE, PDF_LOGO_LEFT_MM, 12);
+      }
       doc.setFontSize(16);
-      doc.text(title, 14, 20);
+      doc.text(subtitle, PDF_LOGO_LEFT_MM, subtitleY);
+      const tableStartY = subtitleY + 8;
       const tableData = (data.records || []).map((r) => [
         r.date ? dayjs(r.date).format('DD.MM.YYYY') : '–',
         (r.description || '–').substring(0, 50),
@@ -80,13 +142,18 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
       autoTable(doc, {
         head: [['Datum', 'Opis', 'Duguje', 'Potražuje']],
         body: tableData,
-        startY: 28,
-        styles: { fontSize: 9, font: 'DejaVuSans' },
+        startY: tableStartY,
+        styles: { fontSize: 9, ...(fontOk ? { font: 'DejaVuSans' } : {}) },
         columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
       });
-      const finalY = doc.lastAutoTable?.finalY ?? 28;
+      const finalY = doc.lastAutoTable?.finalY ?? tableStartY;
       doc.setFontSize(11);
-      doc.text(`Ukupno: ${fmtMoney(data.total)} €`, 14, finalY + 12);
+      doc.text(
+        `Ukupno: ${fmtMoney(data.total)} €`,
+        PDF_PAGE_WIDTH_MM - PDF_RIGHT_MARGIN_MM,
+        finalY + 12,
+        { align: 'right' }
+      );
       doc.save(`finansije-${(memberName || 'clan').replace(/\s+/g, '-')}.pdf`);
     } catch (e) {
       message.error('Preuzimanje PDF-a nije uspjelo. Pokušajte ponovo.');
@@ -97,7 +164,7 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
 
   const handlePrint = () => {
     if (!data) return;
-    const title = `Detalji – ${memberName || 'Član'}`;
+    const title = `Finansijska kartica – ${memberName || 'Član'}`;
     const thead = '<tr><th>Datum</th><th>Opis</th><th>Duguje</th><th>Potražuje</th></tr>';
     const tbody = (data.records || [])
       .map(
@@ -108,10 +175,12 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
     const total = fmtMoney(data.total);
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+    const logoUrl = `${window.location.origin}${process.env.PUBLIC_URL || ''}/logo.png`;
+    const chamberTitle = 'Stomatološka komora Crne Gore';
     printWindow.document.write(`
       <!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#333} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#fafafa;font-weight:600} .total{margin-top:16px;padding:14px 20px;background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;text-align:right;font-weight:600;font-size:16px}</style>
-      </head><body><h2>${title}</h2><table><thead>${thead}</thead><tbody>${tbody}</tbody></table><div class="total">Ukupno: ${total} €</div></body></html>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#333} .pdf-header{display:flex;align-items:center;gap:20px;margin-bottom:24px} .pdf-header .logo{width:80px;height:80px;object-fit:contain;flex-shrink:0} .pdf-header .chamber-title{font-size:1.1rem;font-weight:600;color:#262626;margin:0;line-height:1.3} .subtitle{font-size:1.25rem;margin:0 0 20px 0;font-weight:600;padding-top:18px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#fafafa;font-weight:600} .total{margin-top:16px;padding:14px 20px;background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;text-align:right;font-weight:600;font-size:16px}</style>
+      </head><body><div class="pdf-header"><img src="${logoUrl}" class="logo" alt="" onerror="this.style.display='none'"><p class="chamber-title">${chamberTitle}</p></div><h2 class="subtitle">${title}</h2><table><thead>${thead}</thead><tbody>${tbody}</tbody></table><div class="total">Ukupno: ${total} €</div></body></html>
     `);
     printWindow.document.close();
     printWindow.focus();
