@@ -16,12 +16,25 @@ export const newsApi = {
     formData.append('posted_by', 'admin');
     formData.append('title', data.title);
     if (data.date) formData.append('date', data.date);
-    if (data.images) formData.append('images', data.images);
+    if (data.file) formData.append('file', data.file);
     if (data.imgTitle) formData.append('imgTitle', data.imgTitle);
     return apiClient.post('/news', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  update: (id, data) => apiClient.put(`/news/${id}`, { ...data, id }),
+  update: (id, data) => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('category_id', data.category_id);
+    formData.append('category_name', data.category_name || '');
+    formData.append('content', data.content || '');
+    formData.append('full_text', data.full_text || '');
+    formData.append('posted_by', data.posted_by || 'admin');
+    if (data.date) formData.append('date', data.date);
+    if (data.file) formData.append('file', data.file);
+    return apiClient.post(`/news/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   delete: (id) => apiClient.delete(`/news/${id}`),
 };

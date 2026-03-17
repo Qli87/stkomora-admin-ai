@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { useMembers, useDeleteMember, useAddMember, useUpdateMember, useMember } from '../../hooks/useMembers';
 import { useCompanies } from '../../hooks/useCompanies';
 import MemberForm from '../../components/forms/MemberForm';
+import apiClient from '../../core/api/client';
 
 const { Search } = Input;
 const { Text } = Typography;
@@ -24,7 +25,15 @@ export default function MemberListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('add'); // 'add' | 'edit'
   const [editingId, setEditingId] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const imageFileRef = useRef(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [form] = Form.useForm();
+
+  const handleImageChange = (file) => {
+    setImageFile(file);
+    imageFileRef.current = file;
+  };
 
   const { data: editingMember, isLoading: loadingMember } = useMember(editingId);
 
@@ -97,6 +106,9 @@ export default function MemberListPage() {
   const openAddDrawer = () => {
     setDrawerMode('add');
     setEditingId(null);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     form.resetFields();
     setDrawerOpen(true);
   };
@@ -104,12 +116,18 @@ export default function MemberListPage() {
   const openEditDrawer = (record) => {
     setDrawerMode('edit');
     setEditingId(record.id);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     setDrawerOpen(true);
   };
 
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingId(null);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     form.resetFields();
   };
 
@@ -124,44 +142,54 @@ export default function MemberListPage() {
     }
   };
 
-  const onFormFinish = async (values) => {
+  const onFormFinish = async (values, imageFileFromForm) => {
     try {
       const dob = values.dateOfBirth ? dayjs(values.dateOfBirth).format('YYYY-MM-DD') : null;
-      // Ensure sex is an integer (1 = muški, 2 = ženski)
       const sexValue = typeof values.sex === 'number' ? values.sex : (values.sex?.value || values.sex || 1);
-      
-      if (drawerMode === 'add') {
-        await addMember.mutateAsync({
-          name: values.name,
-          surname: values.surname,
-          sex: sexValue,
-          date_of_birth: dob,
-          speciality: values.speciality,
-          fax_nbr: values.faximil || '',
-          phone: values.phone,
-          email: values.email || null,
-          city_id: values.city_id,
-          company_id: values.company_id || null,
-        });
-        message.success('Član je uspješno dodan');
+      const fileToUpload = imageFileFromForm ?? imageFileRef.current ?? imageFile;
+
+      if (fileToUpload || (drawerMode === 'edit' && removeImage)) {
+        const formData = new FormData();
+        formData.append('name', values.name);
+        formData.append('surname', values.surname);
+        formData.append('sex', sexValue);
+        if (dob) formData.append('date_of_birth', dob);
+        formData.append('speciality', values.speciality);
+        formData.append('fax_nbr', values.faximil || '');
+        formData.append('phone', values.phone);
+        formData.append('email', values.email || '');
+        formData.append('city_id', values.city_id);
+        if (values.company_id != null) formData.append('company_id', values.company_id);
+        if (fileToUpload) formData.append('image', fileToUpload);
+        if (removeImage) formData.append('remove_image', '1');
+
+        if (drawerMode === 'add') {
+          await addMember.mutateAsync(formData);
+          message.success('Član je uspješno dodan');
+        } else {
+          await updateMember.mutateAsync({ id: editingId, data: formData });
+          message.success('Podaci o članu su ažurirani');
+        }
       } else {
-        // Ensure sex is an integer (1 = muški, 2 = ženski)
-        const sexValue = typeof values.sex === 'number' ? values.sex : (values.sex?.value || values.sex || 1);
-        
-        await updateMember.mutateAsync({
-          id: editingId,
+        const payload = {
           name: values.name,
           surname: values.surname,
           sex: sexValue,
           date_of_birth: dob,
           speciality: values.speciality,
-          company_id: values.company_id || null,
-          city_id: values.city_id,
           fax_nbr: values.faximil || '',
-          email: values.email || null,
           phone: values.phone,
-        });
-        message.success('Podaci o članu su ažurirani');
+          email: values.email || null,
+          city_id: values.city_id,
+          company_id: values.company_id || null,
+        };
+        if (drawerMode === 'add') {
+          await addMember.mutateAsync(payload);
+          message.success('Član je uspješno dodan');
+        } else {
+          await updateMember.mutateAsync({ id: editingId, ...payload });
+          message.success('Podaci o članu su ažurirani');
+        }
       }
       closeDrawer();
     } catch (e) {
@@ -236,6 +264,16 @@ export default function MemberListPage() {
   ];
 
   const formLoading = addMember.isPending || updateMember.isPending;
+  const editImageUrl = useMemo(() => {
+    if (!editingMember) return null;
+    const url = editingMember.image_url ?? editingMember.image;
+    if (!url) return null;
+    if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) return url;
+    const base = (apiClient.defaults.baseURL || '').replace(/\/$/, '');
+    const path = (url || '').replace(/^\//, '');
+    return path ? `${base}/${path}` : null;
+  }, [editingMember]);
+
   const drawerContent =
     drawerMode === 'edit' && loadingMember ? (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
@@ -249,6 +287,10 @@ export default function MemberListPage() {
         submitLabel={drawerMode === 'add' ? 'Dodaj' : 'Izmijeni'}
         onCancel={closeDrawer}
         editingMemberId={drawerMode === 'edit' ? editingId : null}
+        imageUrl={drawerMode === 'edit' ? editImageUrl : null}
+        imageFile={imageFile}
+        onImageChange={handleImageChange}
+        onRemoveImage={() => setRemoveImage(true)}
       />
     );
 

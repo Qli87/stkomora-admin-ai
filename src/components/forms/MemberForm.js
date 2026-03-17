@@ -1,9 +1,10 @@
 /**
  * Member form fields – used inside Drawer (add/edit).
+ * Image upload: shown only in form sidebar; not in list.
  */
-import React, { useMemo, useState } from 'react';
-import { Form, Input, Select, Button, Space, DatePicker } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Form, Input, Select, Button, Space, DatePicker, Upload, Avatar } from 'antd';
+import { PlusOutlined, UserOutlined, CameraOutlined } from '@ant-design/icons';
 import { useCities } from '../../hooks/useMembers';
 import { useCompanies } from '../../hooks/useCompanies';
 import CompanyCreateModal from './CompanyCreateModal';
@@ -43,10 +44,34 @@ const CITY_OPTIONS = [
   { value: 22, label: 'Tuzi' }, { value: 23, label: 'Ulcinj' }, { value: 24, label: 'Zeta' }, { value: 25, label: 'Žabljak' },
 ];
 
-export default function MemberForm({ form, onFinish, loading, submitLabel = 'Sačuvaj', cancelLabel = 'Odustani', onCancel, editingMemberId }) {
+export default function MemberForm({
+  form,
+  onFinish,
+  loading,
+  submitLabel = 'Sačuvaj',
+  cancelLabel = 'Odustani',
+  onCancel,
+  editingMemberId,
+  imageUrl = null,
+  imageFile = null,
+  onImageChange,
+  onRemoveImage,
+}) {
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
+  const [localPreview, setLocalPreview] = useState(null);
+  const selectedFileRef = useRef(null);
   const { data: cities = [] } = useCities();
   const { data: companies = [] } = useCompanies();
+
+  useEffect(() => {
+    if (!imageFile) {
+      setLocalPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setLocalPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   const cityOptions = useMemo(() => {
     if (Array.isArray(cities) && cities[0]?.id != null) {
@@ -64,8 +89,55 @@ export default function MemberForm({ form, onFinish, loading, submitLabel = 'Sa�
     form.setFieldValue('company_id', company.id);
   };
 
+  const handleUploadChange = (info) => {
+    const raw = info.file?.originFileObj ?? info.file;
+    const file = raw && typeof raw === 'object' && raw instanceof File ? raw : null;
+    selectedFileRef.current = file;
+    onImageChange?.(file || null);
+  };
+
+  const handleFormFinish = (values) => {
+    const fileToSend = selectedFileRef.current ?? imageFile;
+    onFinish(values, fileToSend);
+  };
+
   return (
-    <Form form={form} layout="vertical" onFinish={onFinish} autoComplete="off">
+    <Form form={form} layout="vertical" onFinish={handleFormFinish} autoComplete="off">
+      <Form.Item label="Fotografija" style={{ marginBottom: 16 }}>
+        <Space direction="vertical" align="center" style={{ width: '100%' }}>
+          <Avatar
+            size={80}
+            src={localPreview || imageUrl}
+            icon={<UserOutlined />}
+            shape="square"
+            style={{ borderRadius: 8 }}
+          />
+          <Upload
+            accept="image/jpeg,image/png,image/jpg,image/gif"
+            showUploadList={false}
+            beforeUpload={() => false}
+            onChange={handleUploadChange}
+          >
+            <Button icon={<CameraOutlined />} size="small">
+              Izaberi sliku
+            </Button>
+          </Upload>
+          {(imageUrl || imageFile) && (onImageChange || onRemoveImage) && (
+            <Button
+              type="link"
+              danger
+              size="small"
+              onClick={() => {
+                selectedFileRef.current = null;
+                onImageChange?.(null);
+                onRemoveImage?.();
+              }}
+            >
+              Ukloni sliku
+            </Button>
+          )}
+        </Space>
+      </Form.Item>
       <Form.Item name="name" label="Ime" rules={[{ required: true }]}>
         <Input placeholder="Unesite ime" />
       </Form.Item>

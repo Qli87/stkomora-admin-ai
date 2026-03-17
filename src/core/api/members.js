@@ -8,7 +8,12 @@ export const membersApi = {
   getList: () => apiClient.get('/member'),
   getById: (id) => apiClient.get(`/member/${id}`),
   create: (data) => apiClient.post('/member', data),
-  update: (id, data) => apiClient.put(`/member/${id}`, { ...data, id }),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return apiClient.post(`/member/${id}`, data);
+    }
+    return apiClient.put(`/member/${id}`, { ...data, id });
+  },
   delete: (id) => apiClient.delete(`/member/${id}`),
 };
 

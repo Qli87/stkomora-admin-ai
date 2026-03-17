@@ -2,12 +2,22 @@
  * News form – used inside Drawer (add/edit).
  */
 import React, { useMemo } from 'react';
-import { Form, Input, Select, Button, DatePicker } from 'antd';
+import { Form, Input, Select, Button, DatePicker, Upload, Typography } from 'antd';
+import { UploadOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useCategories } from '../../hooks/useCategories';
 
 const { TextArea } = Input;
+const { Link } = Typography;
 
-export default function NewsForm({ form, onFinish, loading, submitLabel = 'Sačuvaj', cancelLabel = 'Odustani', onCancel }) {
+export default function NewsForm({
+  form,
+  onFinish,
+  loading,
+  submitLabel = 'Sačuvaj',
+  cancelLabel = 'Odustani',
+  onCancel,
+  existingFileUrl,
+}) {
   const { data: categories = [] } = useCategories();
   const categoryOptions = useMemo(() => {
     return (Array.isArray(categories) ? categories : []).map((c) => ({
@@ -33,6 +43,25 @@ export default function NewsForm({ form, onFinish, loading, submitLabel = 'Saču
       <Form.Item name="full_text" label="Puni tekst">
         <TextArea rows={6} placeholder="Puni tekst vijesti" />
       </Form.Item>
+      <Form.Item
+        name="file"
+        label="PDF fajl"
+        valuePropName="fileList"
+        getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+      >
+        <Upload beforeUpload={() => false} maxCount={1} accept=".pdf">
+          <Button icon={<UploadOutlined />}>Odaberi PDF fajl</Button>
+        </Upload>
+      </Form.Item>
+      {existingFileUrl && (
+        <div style={{ marginTop: -16, marginBottom: 16, fontSize: 13 }}>
+          <FilePdfOutlined style={{ color: '#ff4d4f', marginRight: 6 }} />
+          Trenutni fajl:{' '}
+          <Link href={existingFileUrl} target="_blank" rel="noopener noreferrer">
+            Preuzmi PDF
+          </Link>
+        </div>
+      )}
       <Form.Item style={{ marginBottom: 0 }}>
         <Button type="primary" htmlType="submit" loading={loading} style={{ marginRight: 8 }}>
           {submitLabel}
