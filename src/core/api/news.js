@@ -32,7 +32,7 @@ export const newsApi = {
     formData.append('posted_by', data.posted_by || 'admin');
     if (data.date) formData.append('date', data.date);
     if (data.file) formData.append('file', data.file);
-    return apiClient.post(`/news/${id}`, formData, {
+    return apiClient.put(`/news/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
