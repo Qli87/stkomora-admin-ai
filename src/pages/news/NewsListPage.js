@@ -145,7 +145,7 @@ export default function NewsListPage() {
       render: (file) =>
         file ? (
           <Tooltip title="Preuzmi PDF">
-            <Link href="`https://api.stomkomcg.me/${file}`" target="_blank" rel="noopener noreferrer">
+            <Link href={`https://api.stomkomcg.me/${file}`} target="_blank" rel="noopener noreferrer">
               <FilePdfOutlined style={{ fontSize: 18, color: '#ff4d4f' }} />
             </Link>
           </Tooltip>
