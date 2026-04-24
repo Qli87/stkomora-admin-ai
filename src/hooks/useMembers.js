@@ -52,7 +52,10 @@ export function useAddMember() {
 export function useUpdateMember() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }) => membersApi.update(id, data),
+    mutationFn: ({ id, data, ...rest }) => {
+      const payload = data !== undefined ? data : rest;
+      return membersApi.update(id, payload);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: MEMBERS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...MEMBERS_QUERY_KEY, variables.id] });

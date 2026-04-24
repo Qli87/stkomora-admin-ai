@@ -2,19 +2,347 @@
  * Member list – table + side Drawer for add/edit.
  */
 import React, { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { Table, Input, Button, Space, Modal, Typography, message, Drawer, Spin, Form, Tooltip, Select } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Input, Button, Space, Modal, Typography, message, Drawer, Spin, Form, Tooltip, Select, Descriptions, Avatar, Tag } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useMembers, useDeleteMember, useAddMember, useUpdateMember, useMember } from '../../hooks/useMembers';
 import { useCompanies } from '../../hooks/useCompanies';
+import { useLicenses } from '../../hooks/useLicenses';
+import { useFinances } from '../../hooks/useFinances';
+import { useCertificates } from '../../hooks/useCertificates';
+import { certificatesApi } from '../../core/api/certificates';
 import MemberForm from '../../components/forms/MemberForm';
+import apiClient from '../../core/api/client';
 
 const { Search } = Input;
 const { Text } = Typography;
 
+function getApiErrorMessage(error, fallback = 'Greška') {
+  const payload = error?.response?.data?.message;
+  if (typeof payload === 'string' && payload.trim()) return payload;
+
+  if (payload && typeof payload === 'object') {
+    const firstValue = Object.values(payload)[0];
+    if (Array.isArray(firstValue) && firstValue[0]) return firstValue[0];
+    if (typeof firstValue === 'string' && firstValue.trim()) return firstValue;
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function formatMoney(v) {
+  const n = Number(v);
+  return Number.isNaN(n) ? '0.00' : n.toFixed(2);
+}
+
+const modernTableProps = {
+  bordered: false,
+  size: 'small',
+  pagination: false,
+  className: 'member-modern-table',
+  rowClassName: (_, index) => (index % 2 === 0 ? 'row-even' : 'row-odd'),
+};
+
+function MemberDetailsPanel({ memberId }) {
+  const { data: member, isLoading: loadingMember } = useMember(memberId);
+  const { data: memberLicenses = [], isLoading: loadingLicenses } = useLicenses(memberId);
+  const { data: finances = [], isLoading: loadingFinances } = useFinances();
+  const { data: certificates = [], isLoading: loadingCertificates } = useCertificates();
+
+  const memberFinances = useMemo(() => {
+    return finances.filter((f) => {
+      const userId = f.user_id ?? f.user?.id ?? f.member_id ?? f.member?.id;
+      return userId === memberId;
+    });
+  }, [finances, memberId]);
+
+  const lastFiveFinances = useMemo(() => {
+    return [...memberFinances]
+      .sort((a, b) => {
+        const aTime = a.date ? new Date(a.date).getTime() : 0;
+        const bTime = b.date ? new Date(b.date).getTime() : 0;
+        return bTime - aTime;
+      })
+      .slice(0, 5);
+  }, [memberFinances]);
+
+  const memberSaldo = useMemo(() => {
+    return memberFinances.reduce((acc, row) => acc + Number(row.duguje || 0) - Number(row.potrazuje || 0), 0);
+  }, [memberFinances]);
+
+  const memberCertificates = useMemo(() => {
+    return certificates.filter((c) => {
+      const userId = c.user_id ?? c.user?.id ?? c.member_id ?? c.member?.id;
+      return userId === memberId;
+    });
+  }, [certificates, memberId]);
+
+  const certificateRows = useMemo(() => {
+    const rows = [];
+    memberCertificates.forEach((certificate) => {
+      const files = Array.isArray(certificate.files) ? certificate.files : [];
+      files.forEach((file) => {
+        rows.push({
+          rowKey: `${certificate.id}-${file.id}`,
+          certificateId: certificate.id,
+          fileId: file.id,
+          title: file.title || file.file_name || file.name || `Sertifikat #${file.id}`,
+          createdAt: file.created_at ?? certificate.created_at,
+        });
+      });
+    });
+    return rows;
+  }, [memberCertificates]);
+
+  const financeColumns = [
+    {
+      title: 'Datum',
+      dataIndex: 'date',
+      key: 'date',
+      width: 110,
+      render: (v) => (v ? dayjs(v).format('DD.MM.YYYY') : '–'),
+    },
+    {
+      title: 'Opis',
+      dataIndex: 'description',
+      key: 'description',
+      render: (v) => v || '–',
+      ellipsis: true,
+    },
+    {
+      title: 'Duguje',
+      dataIndex: 'duguje',
+      key: 'duguje',
+      width: 110,
+      align: 'right',
+      render: (v) => formatMoney(v),
+    },
+    {
+      title: 'Potražuje',
+      dataIndex: 'potrazuje',
+      key: 'potrazuje',
+      width: 110,
+      align: 'right',
+      render: (v) => formatMoney(v),
+    },
+  ];
+
+  const licenseColumns = [
+    {
+      title: 'Broj licence',
+      dataIndex: 'license_number',
+      key: 'license_number',
+      width: 130,
+      render: (v) => v || '–',
+    },
+    {
+      title: 'Tip',
+      dataIndex: 'type',
+      key: 'type',
+      width: 110,
+      render: (v) => {
+        if (v === 'permanent') return 'stalna';
+        if (v === 'temporary') return 'privremena';
+        return v || '–';
+      },
+    },
+    {
+      title: 'Vrsta',
+      dataIndex: 'kind',
+      key: 'kind',
+      width: 130,
+      render: (v) => v || '–',
+    },
+    {
+      title: 'Isticanje',
+      dataIndex: 'expires_at',
+      key: 'expires_at',
+      width: 120,
+      render: (v) => (v ? dayjs(v).format('DD.MM.YYYY') : '–'),
+    },
+  ];
+
+  const certificateColumns = [
+    {
+      title: 'Naziv sertifikata',
+      dataIndex: 'title',
+      key: 'title',
+      render: (v) => v || '–',
+    },
+    {
+      title: 'Kreirano',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 120,
+      render: (v) => (v ? dayjs(v).format('DD.MM.YYYY') : '–'),
+    },
+  ];
+
+  if (loadingMember) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+        <Spin />
+      </div>
+    );
+  }
+
+  if (!member) {
+    return <Typography.Text type="secondary">Nema podataka o članu.</Typography.Text>;
+  }
+
+  const fullName = `${member.name || ''} ${member.surname || ''}`.trim() || 'Član';
+  const statusColor = member.status === 'active' ? 'green' : 'default';
+  const saldoColor = memberSaldo > 0 ? '#cf1322' : memberSaldo < 0 ? '#389e0d' : '#595959';
+
+  const sectionStyle = {
+    background: '#ffffff',
+    border: '1px solid #f0f0f0',
+    borderRadius: 12,
+    padding: 16,
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+  };
+
+  const sectionTitleStyle = {
+    display: 'inline-block',
+    fontSize: 16,
+    fontWeight: 600,
+    borderLeft: '4px solid #1677ff',
+    paddingLeft: 10,
+    lineHeight: 1.2,
+    marginBottom: 10,
+  };
+
+  return (
+    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <div
+        style={{
+          ...sectionStyle,
+          background: 'linear-gradient(135deg, #f0f5ff 0%, #ffffff 65%)',
+          borderColor: '#d6e4ff',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+          <Avatar
+            shape="square"
+            size={88}
+            src={member.image_url ?? member.image}
+            style={{ borderRadius: 8 }}
+          />
+          <div>
+            <Typography.Title level={4} style={{ margin: 0 }}>{fullName}</Typography.Title>
+            <Typography.Text type="secondary">{member.email || 'Bez email adrese'}</Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              <Tag color={statusColor}>{member.status || 'status nije definisan'}</Tag>
+              <Tag color="blue">{member.primaryCompany?.name ?? member.company ?? 'Bez ordinacije'}</Tag>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ background: '#fff', border: '1px solid #e6f4ff', borderRadius: 10, padding: '10px 14px', minWidth: 170 }}>
+            <Typography.Text type="secondary">Ukupan saldo</Typography.Text>
+            <div style={{ color: saldoColor, fontWeight: 700, fontSize: 18 }}>{formatMoney(memberSaldo)} €</div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 10, padding: '10px 14px', minWidth: 170 }}>
+            <Typography.Text type="secondary">Broj licenci</Typography.Text>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>{memberLicenses.length}</div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 10, padding: '10px 14px', minWidth: 170 }}>
+            <Typography.Text type="secondary">Broj sertifikata</Typography.Text>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>{certificateRows.length}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Podaci o članu</div>
+        <Descriptions
+          bordered
+          column={2}
+          size="small"
+          style={{ marginTop: 4 }}
+          className="member-modern-descriptions"
+        >
+          <Descriptions.Item label="Ime">{member.name ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Prezime">{member.surname ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="E-mail">{member.email ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Telefon">{member.phone ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Pol">{member.sex ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Datum rođenja">{member.date_of_birth ? dayjs(member.date_of_birth).format('DD.MM.YYYY') : '–'}</Descriptions.Item>
+          <Descriptions.Item label="Specijalnost">{member.speciality ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Fax">{member.fax_nbr ?? member.faximil ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Licenca">{member.licence ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Status">{member.status ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Grad">{member.city?.name ?? member.city ?? '–'}</Descriptions.Item>
+          <Descriptions.Item label="Ordinacija">{member.primaryCompany?.name ?? member.company ?? '–'}</Descriptions.Item>
+        </Descriptions>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={{ ...sectionTitleStyle, borderLeftColor: '#13c2c2' }}>Licence</div>
+        <Table
+          rowKey="id"
+          columns={licenseColumns}
+          dataSource={memberLicenses}
+          loading={loadingLicenses}
+          {...modernTableProps}
+          style={{ marginTop: 12 }}
+          locale={{ emptyText: 'Nema licenci' }}
+        />
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={{ ...sectionTitleStyle, borderLeftColor: '#faad14' }}>Finansije (zadnjih 5)</div>
+        <Table
+          rowKey="id"
+          columns={financeColumns}
+          dataSource={lastFiveFinances}
+          loading={loadingFinances}
+          {...modernTableProps}
+          style={{ marginTop: 12 }}
+          locale={{ emptyText: 'Nema finansijskih stavki' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Typography.Text strong style={{ color: saldoColor }}>Saldo ukupno: {formatMoney(memberSaldo)} €</Typography.Text>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={{ ...sectionTitleStyle, borderLeftColor: '#722ed1' }}>Sertifikati</div>
+        <div style={{ marginTop: 6 }}>
+          <Typography.Text type="secondary">Broj sertifikata: {certificateRows.length}</Typography.Text>
+        </div>
+        <Table
+          rowKey="rowKey"
+          columns={certificateColumns}
+          dataSource={certificateRows}
+          loading={loadingCertificates}
+          {...modernTableProps}
+          style={{ marginTop: 12 }}
+          locale={{ emptyText: 'Nema sertifikata' }}
+          onRow={(record) => ({
+            onClick: async () => {
+              try {
+                const blob = await certificatesApi.fetchFileBlob(record.certificateId, record.fileId, 'inline');
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank', 'noopener,noreferrer');
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+              } catch (err) {
+                message.error(err?.message || 'Greška pri otvaranju sertifikata');
+              }
+            },
+            style: { cursor: 'pointer' },
+          })}
+        />
+      </div>
+    </Space>
+  );
+}
+
 export default function MemberListPage() {
   const { data: members = [], isLoading, error } = useMembers();
   const { data: companies = [] } = useCompanies();
+  const { data: licenses = [] } = useLicenses();
   const deleteMember = useDeleteMember();
   const addMember = useAddMember();
   const updateMember = useUpdateMember();
@@ -24,7 +352,16 @@ export default function MemberListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('add'); // 'add' | 'edit'
   const [editingId, setEditingId] = useState(null);
+  const [detailsMemberId, setDetailsMemberId] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const imageFileRef = useRef(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [form] = Form.useForm();
+
+  const handleImageChange = (file) => {
+    setImageFile(file);
+    imageFileRef.current = file;
+  };
 
   const { data: editingMember, isLoading: loadingMember } = useMember(editingId);
 
@@ -84,19 +421,69 @@ export default function MemberListPage() {
       );
     }
     if (searchText.trim()) {
-      const lower = searchText.toLowerCase();
-      result = result.filter(
-        (m) =>
-          (m.name && m.name.toLowerCase().includes(lower)) ||
-          (m.surname && m.surname.toLowerCase().includes(lower))
-      );
+      const normalizedSearch = searchText.toLowerCase().trim();
+      const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
+
+      result = result.filter((m) => {
+        const name = (m.name || '').toLowerCase().trim();
+        const surname = (m.surname || '').toLowerCase().trim();
+        const fullName = `${name} ${surname}`.trim();
+        const reversedFullName = `${surname} ${name}`.trim();
+
+        if (searchParts.length === 1) {
+          const term = searchParts[0];
+          return name.includes(term) || surname.includes(term) || fullName.includes(term);
+        }
+
+        return (
+          fullName.includes(normalizedSearch) ||
+          reversedFullName.includes(normalizedSearch) ||
+          searchParts.every((part) => fullName.includes(part))
+        );
+      });
     }
     return result;
   }, [members, searchText, companyFilter]);
 
+  const licenseNumbersByUserId = useMemo(() => {
+    const map = new Map();
+
+    if (Array.isArray(licenses)) {
+      licenses.forEach((license) => {
+        const userId = license?.user_id ?? license?.user?.id ?? license?.member_id ?? license?.member?.id;
+        const number = license?.license_number ?? license?.licence;
+        if (!userId || !number) return;
+        if (!map.has(userId)) map.set(userId, []);
+        map.get(userId).push(number);
+      });
+    }
+
+    if (Array.isArray(members)) {
+      members.forEach((member) => {
+        const userId = member?.id;
+        if (!userId || !Array.isArray(member?.licenses)) return;
+        member.licenses.forEach((license) => {
+          const number = license?.license_number ?? license?.licence;
+          if (!number) return;
+          if (!map.has(userId)) map.set(userId, []);
+          map.get(userId).push(number);
+        });
+      });
+    }
+
+    for (const [userId, values] of map.entries()) {
+      map.set(userId, Array.from(new Set(values)));
+    }
+
+    return map;
+  }, [licenses, members]);
+
   const openAddDrawer = () => {
     setDrawerMode('add');
     setEditingId(null);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     form.resetFields();
     setDrawerOpen(true);
   };
@@ -104,13 +491,24 @@ export default function MemberListPage() {
   const openEditDrawer = (record) => {
     setDrawerMode('edit');
     setEditingId(record.id);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     setDrawerOpen(true);
   };
 
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingId(null);
+    setImageFile(null);
+    imageFileRef.current = null;
+    setRemoveImage(false);
     form.resetFields();
+  };
+
+  const openDetailsDrawer = (record) => {
+    if (!record?.id) return;
+    setDetailsMemberId(record.id);
   };
 
   const handleDelete = async () => {
@@ -124,59 +522,87 @@ export default function MemberListPage() {
     }
   };
 
-  const onFormFinish = async (values) => {
+  const onFormFinish = async (values, imageFileFromForm) => {
     try {
       const dob = values.dateOfBirth ? dayjs(values.dateOfBirth).format('YYYY-MM-DD') : null;
-      // Ensure sex is an integer (1 = muški, 2 = ženski)
       const sexValue = typeof values.sex === 'number' ? values.sex : (values.sex?.value || values.sex || 1);
-      
-      if (drawerMode === 'add') {
-        await addMember.mutateAsync({
-          name: values.name,
-          surname: values.surname,
-          sex: sexValue,
-          date_of_birth: dob,
-          speciality: values.speciality,
-          fax_nbr: values.faximil || '',
-          phone: values.phone,
-          email: values.email || null,
-          city_id: values.city_id,
-          company_id: values.company_id || null,
-        });
-        message.success('Član je uspješno dodan');
+      const fileToUpload = imageFileFromForm ?? imageFileRef.current ?? imageFile;
+
+      if (fileToUpload || (drawerMode === 'edit' && removeImage)) {
+        const formData = new FormData();
+        formData.append('name', values.name);
+        formData.append('surname', values.surname);
+        formData.append('sex', sexValue);
+        if (dob) formData.append('date_of_birth', dob);
+        formData.append('speciality', values.speciality);
+        formData.append('fax_nbr', values.faximil || '');
+        formData.append('phone', values.phone);
+        formData.append('email', values.email || '');
+        formData.append('city_id', values.city_id);
+        if (values.company_id != null) formData.append('company_id', values.company_id);
+        if (fileToUpload) formData.append('image', fileToUpload);
+        if (removeImage) formData.append('remove_image', '1');
+
+        if (drawerMode === 'add') {
+          await addMember.mutateAsync(formData);
+          message.success('Član je uspješno dodan');
+        } else {
+          await updateMember.mutateAsync({ id: editingId, data: formData });
+          message.success('Podaci o članu su ažurirani');
+        }
       } else {
-        // Ensure sex is an integer (1 = muški, 2 = ženski)
-        const sexValue = typeof values.sex === 'number' ? values.sex : (values.sex?.value || values.sex || 1);
-        
-        await updateMember.mutateAsync({
-          id: editingId,
+        const payload = {
           name: values.name,
           surname: values.surname,
           sex: sexValue,
           date_of_birth: dob,
           speciality: values.speciality,
-          company_id: values.company_id || null,
-          city_id: values.city_id,
           fax_nbr: values.faximil || '',
-          email: values.email || null,
           phone: values.phone,
-        });
-        message.success('Podaci o članu su ažurirani');
+          email: values.email || null,
+          city_id: values.city_id,
+          company_id: values.company_id || null,
+        };
+        if (drawerMode === 'add') {
+          await addMember.mutateAsync(payload);
+          message.success('Član je uspješno dodan');
+        } else {
+          await updateMember.mutateAsync({ id: editingId, ...payload });
+          message.success('Podaci o članu su ažurirani');
+        }
       }
       closeDrawer();
     } catch (e) {
-      message.error(e?.message || 'Greška');
+      message.error(getApiErrorMessage(e, 'Greška'));
     }
   };
 
   const columns = [
     {
       title: 'Licenca',
-      dataIndex: 'licence',
       key: 'licence',
       width: 90,
       ellipsis: true,
-      render: (v) => (Array.isArray(v) ? v.map((l) => l?.license_number || l).join(', ') : v ?? '–'),
+      render: (_, record) => {
+        const mapped = licenseNumbersByUserId.get(record?.id);
+        if (Array.isArray(mapped) && mapped.length > 0) return mapped.join(', ');
+
+        const relationLicenses = Array.isArray(record.licenses)
+          ? record.licenses
+              .map((l) => l?.license_number ?? l?.licence ?? l)
+              .filter(Boolean)
+          : [];
+
+        if (relationLicenses.length > 0) return relationLicenses.join(', ');
+        if (Array.isArray(record.licence)) {
+          const legacyArray = record.licence
+            .map((l) => l?.license_number ?? l?.licence ?? l)
+            .filter(Boolean);
+          return legacyArray.length > 0 ? legacyArray.join(', ') : '–';
+        }
+
+        return record.licence ?? record.license_number ?? '–';
+      },
     },
     { title: 'Ime', dataIndex: 'name', key: 'name', width: 110, ellipsis: true },
     { title: 'Prezime', dataIndex: 'surname', key: 'surname', width: 110, ellipsis: true },
@@ -213,10 +639,16 @@ export default function MemberListPage() {
     {
       title: 'Akcije',
       key: 'actions',
-      width: 100,
+      width: 130,
       fixed: 'right',
       render: (_, record) => (
         <Space>
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => openDetailsDrawer(record)}
+            title="Detalji člana"
+          />
           <Button
             type="link"
             icon={<EditOutlined />}
@@ -236,6 +668,16 @@ export default function MemberListPage() {
   ];
 
   const formLoading = addMember.isPending || updateMember.isPending;
+  const editImageUrl = useMemo(() => {
+    if (!editingMember) return null;
+    const url = editingMember.image_url ?? editingMember.image;
+    if (!url) return null;
+    if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) return url;
+    const base = (apiClient.defaults.baseURL || '').replace(/\/$/, '');
+    const path = (url || '').replace(/^\//, '');
+    return path ? `${base}/${path}` : null;
+  }, [editingMember]);
+
   const drawerContent =
     drawerMode === 'edit' && loadingMember ? (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
@@ -249,6 +691,10 @@ export default function MemberListPage() {
         submitLabel={drawerMode === 'add' ? 'Dodaj' : 'Izmijeni'}
         onCancel={closeDrawer}
         editingMemberId={drawerMode === 'edit' ? editingId : null}
+        imageUrl={drawerMode === 'edit' ? editImageUrl : null}
+        imageFile={imageFile}
+        onImageChange={handleImageChange}
+        onRemoveImage={() => setRemoveImage(true)}
       />
     );
 
@@ -326,6 +772,13 @@ export default function MemberListPage() {
           }}
           size="small"
           locale={{ emptyText: error ? 'Greška pri učitavanju' : 'Nema članova' }}
+          onRow={(record) => ({
+            onClick: (e) => {
+              if (e.target.closest('button') || e.target.closest('a')) return;
+              openDetailsDrawer(record);
+            },
+            style: { cursor: 'pointer' },
+          })}
         />
       </div>
       <Modal
@@ -350,6 +803,61 @@ export default function MemberListPage() {
         destroyOnClose
       >
         {drawerContent}
+      </Drawer>
+      <Drawer
+        title="Detalji člana"
+        placement="right"
+        width={960}
+        open={!!detailsMemberId}
+        onClose={() => setDetailsMemberId(null)}
+        styles={{
+          header: { borderBottom: '1px solid #f0f0f0' },
+          body: { background: '#f5f7fb', padding: 16 },
+        }}
+        destroyOnClose
+      >
+        <style>{`
+          .member-modern-descriptions .ant-descriptions-view {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #edf2f7;
+          }
+          .member-modern-descriptions .ant-descriptions-item-label {
+            background: linear-gradient(180deg, #fafcff 0%, #f3f7ff 100%) !important;
+            font-weight: 600;
+            color: #1f2a44;
+            border-color: #e6ebf5 !important;
+          }
+          .member-modern-descriptions .ant-descriptions-item-content {
+            background: #ffffff;
+            border-color: #edf2f7 !important;
+          }
+          .member-modern-descriptions .ant-descriptions-row:nth-child(even) .ant-descriptions-item-content {
+            background: #fcfdff;
+          }
+          .member-modern-table .ant-table {
+            border: 1px solid #edf2f7;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+          }
+          .member-modern-table .ant-table-thead > tr > th {
+            background: linear-gradient(180deg, #fafcff 0%, #f3f7ff 100%);
+            font-weight: 600;
+            color: #1f2a44;
+            border-bottom: 1px solid #e6ebf5;
+          }
+          .member-modern-table .ant-table-tbody > tr.row-even > td {
+            background: #ffffff;
+          }
+          .member-modern-table .ant-table-tbody > tr.row-odd > td {
+            background: #fcfdff;
+          }
+          .member-modern-table .ant-table-tbody > tr:hover > td {
+            background: #eef4ff !important;
+          }
+        `}</style>
+        {detailsMemberId ? <MemberDetailsPanel memberId={detailsMemberId} /> : null}
       </Drawer>
     </div>
   );

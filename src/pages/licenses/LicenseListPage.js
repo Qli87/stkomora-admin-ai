@@ -51,14 +51,29 @@ export default function LicenseListPage() {
       result = result.filter((l) => l.type === typeFilter);
     }
     if (searchText.trim()) {
-      const lower = searchText.toLowerCase();
+      const normalizedSearch = searchText.toLowerCase().trim();
+      const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
       result = result.filter(
-        (l) =>
-          (l.license_number && l.license_number.toLowerCase().includes(lower)) ||
-          (l.user?.name && l.user.name.toLowerCase().includes(lower)) ||
-          (l.user?.surname && l.user.surname.toLowerCase().includes(lower)) ||
-          (l.member?.name && l.member.name.toLowerCase().includes(lower)) ||
-          (l.member?.surname && l.member.surname.toLowerCase().includes(lower))
+        (l) => {
+          const licenseNumber = (l.license_number || '').toLowerCase();
+          const userName = (l.user?.name || l.member?.name || '').toLowerCase().trim();
+          const userSurname = (l.user?.surname || l.member?.surname || '').toLowerCase().trim();
+          const fullName = `${userName} ${userSurname}`.trim();
+          const reversedFullName = `${userSurname} ${userName}`.trim();
+
+          if (licenseNumber.includes(normalizedSearch)) return true;
+
+          if (searchParts.length === 1) {
+            const term = searchParts[0];
+            return userName.includes(term) || userSurname.includes(term) || fullName.includes(term);
+          }
+
+          return (
+            fullName.includes(normalizedSearch) ||
+            reversedFullName.includes(normalizedSearch) ||
+            searchParts.every((part) => fullName.includes(part))
+          );
+        }
       );
     }
     return result;

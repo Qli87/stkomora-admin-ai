@@ -47,14 +47,30 @@ export default function EmployeeListPage() {
 
   const filteredEmployees = useMemo(() => {
     if (!searchText.trim()) return employees;
-    const lower = searchText.toLowerCase();
-    return employees.filter(
-      (e) =>
-        (e.name && e.name.toLowerCase().includes(lower)) ||
-        (e.surname && e.surname.toLowerCase().includes(lower)) ||
-        (e.email && e.email.toLowerCase().includes(lower)) ||
-        (e.jmbg && String(e.jmbg).includes(lower))
-    );
+    const normalizedSearch = searchText.toLowerCase().trim();
+    const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
+
+    return employees.filter((e) => {
+      const name = (e.name || '').toLowerCase().trim();
+      const surname = (e.surname || '').toLowerCase().trim();
+      const fullName = `${name} ${surname}`.trim();
+      const reversedFullName = `${surname} ${name}`.trim();
+      const email = (e.email || '').toLowerCase();
+      const jmbg = e.jmbg ? String(e.jmbg) : '';
+
+      if (email.includes(normalizedSearch) || jmbg.includes(normalizedSearch)) return true;
+
+      if (searchParts.length === 1) {
+        const term = searchParts[0];
+        return name.includes(term) || surname.includes(term) || fullName.includes(term);
+      }
+
+      return (
+        fullName.includes(normalizedSearch) ||
+        reversedFullName.includes(normalizedSearch) ||
+        searchParts.every((part) => fullName.includes(part))
+      );
+    });
   }, [employees, searchText]);
 
   const openAddDrawer = () => {

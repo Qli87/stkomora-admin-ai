@@ -3,13 +3,13 @@
  */
 import React, { useMemo, useState, useEffect } from 'react';
 import { Table, Input, Button, Space, Modal, Typography, message, Drawer, Spin, Form, Tooltip } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useNews, useNewsItem, useAddNews, useUpdateNews, useDeleteNews } from '../../hooks/useNews';
 import NewsForm from '../../components/forms/NewsForm';
 import dayjs from 'dayjs';
 
 const { Search } = Input;
-const { Text } = Typography;
+const { Text, Link } = Typography;
 
 export default function NewsListPage() {
   const { data: newsList = [], isLoading, error } = useNews();
@@ -33,6 +33,7 @@ export default function NewsListPage() {
       date: editingItem.date ? dayjs(editingItem.date) : null,
       content: editingItem.content,
       full_text: editingItem.full_text,
+      file: [],
     });
   }, [editingItem, drawerMode, form]);
 
@@ -73,6 +74,7 @@ export default function NewsListPage() {
   };
 
   const onFormFinish = async (values) => {
+    const pdfFile = values.file?.[0]?.originFileObj || null;
     try {
       if (drawerMode === 'add') {
         await addNews.mutateAsync({
@@ -82,6 +84,7 @@ export default function NewsListPage() {
           date: values.date ? values.date.format('YYYY-MM-DD') : null,
           content: values.content || '',
           full_text: values.full_text || '',
+          file: pdfFile,
         });
         message.success('Vijest je dodana');
       } else {
@@ -92,6 +95,7 @@ export default function NewsListPage() {
           date: values.date ? values.date.format('YYYY-MM-DD') : null,
           content: values.content || '',
           full_text: values.full_text || '',
+          file: pdfFile,
         });
         message.success('Vijest je ažurirana');
       }
@@ -133,6 +137,23 @@ export default function NewsListPage() {
       render: (v) => (v ? new Date(v).toLocaleDateString() : '–'),
     },
     {
+      title: 'PDF',
+      dataIndex: 'file',
+      key: 'file',
+      width: 70,
+      align: 'center',
+      render: (file) =>
+        file ? (
+          <Tooltip title="Preuzmi PDF">
+            <Link href={`https://api.stomkomcg.me/${file}`} target="_blank" rel="noopener noreferrer">
+              <FilePdfOutlined style={{ fontSize: 18, color: '#ff4d4f' }} />
+            </Link>
+          </Tooltip>
+        ) : (
+          '–'
+        ),
+    },
+    {
       title: 'Akcije',
       key: 'actions',
       width: 100,
@@ -153,6 +174,12 @@ export default function NewsListPage() {
   ];
 
   const formLoading = addNews.isPending || updateNews.isPending;
+
+  const existingFileUrl =
+    drawerMode === 'edit' && editingItem?.file
+      ? `https://api.stomkomcg.me/${editingItem.file}`
+      : null;
+
   const drawerContent =
     drawerMode === 'edit' && loadingItem ? (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
@@ -165,6 +192,7 @@ export default function NewsListPage() {
         loading={formLoading}
         submitLabel={drawerMode === 'add' ? 'Dodaj' : 'Izmijeni'}
         onCancel={closeDrawer}
+        existingFileUrl={existingFileUrl}
       />
     );
 
@@ -202,7 +230,7 @@ export default function NewsListPage() {
           columns={columns}
           dataSource={filteredNews}
           loading={isLoading}
-          scroll={{ x: 600 }}
+          scroll={{ x: 700 }}
           pagination={{
             pageSize: 15,
             showSizeChanger: true,

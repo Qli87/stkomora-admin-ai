@@ -7,8 +7,8 @@ import axios from 'axios';
 const API_BASE_URL =
   typeof process.env.REACT_APP_API_URL !== 'undefined'
     ? process.env.REACT_APP_API_URL
-    // : 'https://laravel.stomkomcg.me';
     : 'http://localhost:8000';
+    // : 'https://api.stomkomcg.me';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

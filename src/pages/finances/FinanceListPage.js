@@ -29,6 +29,13 @@ function fmtMoney(v) {
   return isNaN(n) ? '0.00' : n.toFixed(2);
 }
 
+function normalizeSearchValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 /* UTF-8 PDF font (same origin to avoid 403) – postinstall copies to public/fonts */
 const PDF_FONT_URL = `${process.env.PUBLIC_URL || ''}/fonts/DejaVuSans.ttf`;
 let pdfFontBase64Cache = null;
@@ -147,7 +154,12 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
         fmtMoney(r.potrazuje),
       ]);
       autoTable(doc, {
-        head: [['Datum', 'Opis', 'Duguje', 'Potražuje']],
+        head: [[
+          { content: 'Datum' },
+          { content: 'Opis' },
+          { content: 'Duguje', styles: { halign: 'right' } },
+          { content: 'Potražuje', styles: { halign: 'right' } },
+        ]],
         body: tableData,
         startY: tableStartY,
         styles: { fontSize: 9, ...(fontOk ? { font: 'DejaVuSans' } : {}) },
@@ -179,7 +191,7 @@ function MemberDetailsContent({ memberId, memberName = '' }) {
   const handlePrint = () => {
     if (!data) return;
     const title = `Finansijska kartica – ${memberName || 'Član'}`;
-    const thead = '<tr><th>Datum</th><th>Opis</th><th>Duguje</th><th>Potražuje</th></tr>';
+    const thead = '<tr><th>Datum</th><th>Opis</th><th style="text-align:right">Duguje</th><th style="text-align:right">Potražuje</th></tr>';
     const tbody = (data.records || [])
       .map(
         (r) =>
@@ -333,6 +345,7 @@ export default function FinanceListPage() {
 
   const [searchText, setSearchText] = useState('');
   const [memberFilter, setMemberFilter] = useState('all');
+  const [updatedByFilter, setUpdatedByFilter] = useState('all');
   const [deleteModal, setDeleteModal] = useState({ visible: false, item: null });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('add');
@@ -370,6 +383,18 @@ export default function FinanceListPage() {
     ];
   }, [finances]);
 
+  const updatedByFilterOptions = useMemo(() => {
+    const names = new Set();
+    finances.forEach((f) => {
+      if (f.updated_by_name) names.add(f.updated_by_name);
+    });
+    const sorted = [...names].sort((a, b) => a.localeCompare(b));
+    return [
+      { value: 'all', label: 'Svi obrađivači' },
+      ...sorted.map((name) => ({ value: name, label: name })),
+    ];
+  }, [finances]);
+
   const filteredFinances = useMemo(() => {
     let result = finances;
     if (memberFilter !== 'all') {
@@ -378,19 +403,32 @@ export default function FinanceListPage() {
         return userId === memberFilter;
       });
     }
-    if (searchText.trim()) {
-      const lower = searchText.toLowerCase();
+    if (updatedByFilter !== 'all') {
+      result = result.filter((f) => f.updated_by_name === updatedByFilter);
+    }
+    const normalizedSearchText = normalizeSearchValue(searchText);
+    if (normalizedSearchText) {
       result = result.filter((f) => {
         const user = f.user || f.member; // Support both user (new) and member (legacy)
+        const name = normalizeSearchValue(user?.name);
+        const surname = normalizeSearchValue(user?.surname);
+        const fullName = normalizeSearchValue(`${user?.name || ''} ${user?.surname || ''}`);
+        const fullNameReverse = normalizeSearchValue(`${user?.surname || ''} ${user?.name || ''}`);
+        const description = normalizeSearchValue(f.description);
+        const updatedByName = normalizeSearchValue(f.updated_by_name);
+
         return (
-          (user?.name && user.name.toLowerCase().includes(lower)) ||
-          (user?.surname && user.surname.toLowerCase().includes(lower)) ||
-          (f.description && f.description.toLowerCase().includes(lower))
+          name.includes(normalizedSearchText) ||
+          surname.includes(normalizedSearchText) ||
+          fullName.includes(normalizedSearchText) ||
+          fullNameReverse.includes(normalizedSearchText) ||
+          description.includes(normalizedSearchText) ||
+          updatedByName.includes(normalizedSearchText)
         );
       });
     }
     return result;
-  }, [finances, searchText, memberFilter]);
+  }, [finances, searchText, memberFilter, updatedByFilter]);
 
   const openAddDrawer = () => {
     setDrawerMode('add');
@@ -477,6 +515,15 @@ export default function FinanceListPage() {
       dataIndex: 'description',
       key: 'description',
       width: 180,
+      ellipsis: true,
+      responsive: ['lg'],
+      render: (v) => v || '–',
+    },
+    {
+      title: 'Obradio/la',
+      dataIndex: 'updated_by_name',
+      key: 'updated_by_name',
+      width: 160,
       ellipsis: true,
       responsive: ['lg'],
       render: (v) => v || '–',
@@ -597,6 +644,14 @@ export default function FinanceListPage() {
             onChange={setMemberFilter}
             style={{ width: 180 }}
             options={memberFilterOptions}
+            showSearch
+            optionFilterProp="label"
+          />
+          <Select
+            value={updatedByFilter}
+            onChange={setUpdatedByFilter}
+            style={{ width: 180 }}
+            options={updatedByFilterOptions}
             showSearch
             optionFilterProp="label"
           />

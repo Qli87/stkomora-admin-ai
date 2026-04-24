@@ -46,14 +46,30 @@ export default function ConsultantListPage() {
 
   const filteredConsultants = useMemo(() => {
     if (!searchText.trim()) return consultants;
-    const lower = searchText.toLowerCase();
-    return consultants.filter(
-      (c) =>
-        (c.name && c.name.toLowerCase().includes(lower)) ||
-        (c.surname && c.surname.toLowerCase().includes(lower)) ||
-        (c.email && c.email.toLowerCase().includes(lower)) ||
-        (c.jmbg && String(c.jmbg).includes(lower))
-    );
+    const normalizedSearch = searchText.toLowerCase().trim();
+    const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
+
+    return consultants.filter((c) => {
+      const name = (c.name || '').toLowerCase().trim();
+      const surname = (c.surname || '').toLowerCase().trim();
+      const fullName = `${name} ${surname}`.trim();
+      const reversedFullName = `${surname} ${name}`.trim();
+      const email = (c.email || '').toLowerCase();
+      const jmbg = c.jmbg ? String(c.jmbg) : '';
+
+      if (email.includes(normalizedSearch) || jmbg.includes(normalizedSearch)) return true;
+
+      if (searchParts.length === 1) {
+        const term = searchParts[0];
+        return name.includes(term) || surname.includes(term) || fullName.includes(term);
+      }
+
+      return (
+        fullName.includes(normalizedSearch) ||
+        reversedFullName.includes(normalizedSearch) ||
+        searchParts.every((part) => fullName.includes(part))
+      );
+    });
   }, [consultants, searchText]);
 
   const openAddDrawer = () => {
