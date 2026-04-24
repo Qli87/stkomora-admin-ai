@@ -65,14 +65,28 @@ export default function CertificateListPage() {
 
   const filteredCertificates = useMemo(() => {
     if (!searchText.trim()) return certificates;
-    const lower = searchText.toLowerCase();
+    const normalizedSearch = searchText.toLowerCase().trim();
+    const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
     return certificates.filter((record) => {
       const u = record.user;
+      const name = (u?.name || '').toLowerCase().trim();
+      const surname = (u?.surname || '').toLowerCase().trim();
+      const fullName = `${name} ${surname}`.trim();
+      const reversedFullName = `${surname} ${name}`.trim();
+      const phone = (u?.phone ? String(u.phone) : '').toLowerCase();
+      const email = (u?.email || '').toLowerCase();
+
+      if (phone.includes(normalizedSearch) || email.includes(normalizedSearch)) return true;
+
+      if (searchParts.length === 1) {
+        const term = searchParts[0];
+        return name.includes(term) || surname.includes(term) || fullName.includes(term);
+      }
+
       return (
-        (u?.name && u.name.toLowerCase().includes(lower)) ||
-        (u?.surname && u.surname.toLowerCase().includes(lower)) ||
-        (u?.phone && String(u.phone).toLowerCase().includes(lower)) ||
-        (u?.email && u.email.toLowerCase().includes(lower))
+        fullName.includes(normalizedSearch) ||
+        reversedFullName.includes(normalizedSearch) ||
+        searchParts.every((part) => fullName.includes(part))
       );
     });
   }, [certificates, searchText]);

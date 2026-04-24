@@ -29,6 +29,13 @@ function fmtMoney(v) {
   return isNaN(n) ? '0.00' : n.toFixed(2);
 }
 
+function normalizeSearchValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 /* UTF-8 PDF font (same origin to avoid 403) – postinstall copies to public/fonts */
 const PDF_FONT_URL = `${process.env.PUBLIC_URL || ''}/fonts/DejaVuSans.ttf`;
 let pdfFontBase64Cache = null;
@@ -399,15 +406,24 @@ export default function FinanceListPage() {
     if (updatedByFilter !== 'all') {
       result = result.filter((f) => f.updated_by_name === updatedByFilter);
     }
-    if (searchText.trim()) {
-      const lower = searchText.toLowerCase();
+    const normalizedSearchText = normalizeSearchValue(searchText);
+    if (normalizedSearchText) {
       result = result.filter((f) => {
         const user = f.user || f.member; // Support both user (new) and member (legacy)
+        const name = normalizeSearchValue(user?.name);
+        const surname = normalizeSearchValue(user?.surname);
+        const fullName = normalizeSearchValue(`${user?.name || ''} ${user?.surname || ''}`);
+        const fullNameReverse = normalizeSearchValue(`${user?.surname || ''} ${user?.name || ''}`);
+        const description = normalizeSearchValue(f.description);
+        const updatedByName = normalizeSearchValue(f.updated_by_name);
+
         return (
-          (user?.name && user.name.toLowerCase().includes(lower)) ||
-          (user?.surname && user.surname.toLowerCase().includes(lower)) ||
-          (f.description && f.description.toLowerCase().includes(lower)) ||
-          (f.updated_by_name && f.updated_by_name.toLowerCase().includes(lower))
+          name.includes(normalizedSearchText) ||
+          surname.includes(normalizedSearchText) ||
+          fullName.includes(normalizedSearchText) ||
+          fullNameReverse.includes(normalizedSearchText) ||
+          description.includes(normalizedSearchText) ||
+          updatedByName.includes(normalizedSearchText)
         );
       });
     }

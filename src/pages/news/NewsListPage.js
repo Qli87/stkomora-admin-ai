@@ -145,7 +145,7 @@ export default function NewsListPage() {
       render: (file) =>
         file ? (
           <Tooltip title="Preuzmi PDF">
-            <Link href={`${process.env.REACT_APP_BASE_URL || ''}/${file}`} target="_blank" rel="noopener noreferrer">
+            <Link href={`https://api.stomkomcg.me/${file}`} target="_blank" rel="noopener noreferrer">
               <FilePdfOutlined style={{ fontSize: 18, color: '#ff4d4f' }} />
             </Link>
           </Tooltip>
@@ -177,7 +177,7 @@ export default function NewsListPage() {
 
   const existingFileUrl =
     drawerMode === 'edit' && editingItem?.file
-      ? `${process.env.REACT_APP_BASE_URL || ''}/${editingItem.file}`
+      ? `https://api.stomkomcg.me/${editingItem.file}`
       : null;
 
   const drawerContent =

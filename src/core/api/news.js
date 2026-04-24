@@ -18,9 +18,7 @@ export const newsApi = {
     if (data.date) formData.append('date', data.date);
     if (data.file) formData.append('file', data.file);
     if (data.imgTitle) formData.append('imgTitle', data.imgTitle);
-    return apiClient.post('/news', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return apiClient.post('/news', formData);
   },
   update: (id, data) => {
     const formData = new FormData();
@@ -32,9 +30,7 @@ export const newsApi = {
     formData.append('posted_by', data.posted_by || 'admin');
     if (data.date) formData.append('date', data.date);
     if (data.file) formData.append('file', data.file);
-    return apiClient.post(`/news/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return apiClient.post(`/news/${id}`, formData);
   },
   delete: (id) => apiClient.delete(`/news/${id}`),
 };
